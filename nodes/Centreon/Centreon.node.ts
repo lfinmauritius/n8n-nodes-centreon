@@ -3,6 +3,7 @@ import {
 	INodeTypeDescription,
 	IExecuteFunctions,
         NodeConnectionType, 
+        NodeApiError
 } from 'n8n-workflow';
 
 export class Centreon implements INodeType {
@@ -87,18 +88,39 @@ export class Centreon implements INodeType {
 	}
 }
 
-/* ----------------- Helpers ----------------- */
-async function getAuthToken(this: IExecuteFunctions, creds: any): Promise<string> {
+
+async function getAuthToken(
+	this: IExecuteFunctions,
+	creds: { baseUrl: string; username: string; password: string; ignoreSsl?: boolean },
+) {
+	const url = `${creds.baseUrl.replace(/\/+$/, '')}/centreon/api/latest/login`;
+
+	const payload = {
+		security: {
+			credentials: {
+				login: creds.username,
+				password: creds.password,
+			},
+		},
+	};
+
 	const res = await this.helpers.httpRequest({
 		method: 'POST',
-		url: `${creds.baseUrl}/centreon/api/latest/login`,
-		body: {
-			username: creds.username,
-			password: creds.password,
-		},
+		url,
+		headers: { 'Content-Type': 'application/json' },
 		json: true,
+		body: payload,
+		rejectUnauthorized: !creds.ignoreSsl,
 	});
-	return res.security.token;
+
+	const token = res?.security?.token as string | undefined;
+	if (!token) {
+		throw new NodeApiError(this.getNode(), res, {
+			message: 'Login failed: no token returned by Centreon',
+		});
+	}
+
+	return token;
 }
 
 async function centreonRequest(
