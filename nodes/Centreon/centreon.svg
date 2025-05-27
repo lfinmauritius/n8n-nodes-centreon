@@ -1,0 +1,11 @@
+--2025-05-27 13:46:51--  https://www.vectorlogo.zone/logos/centreon/centreon-icon.svg
+Resolving www.vectorlogo.zone (www.vectorlogo.zone)... 104.21.17.125, 172.67.176.194, 2606:4700:3032::6815:117d, ...
+Connecting to www.vectorlogo.zone (www.vectorlogo.zone)|104.21.17.125|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: unspecified [image/svg+xml]
+Saving to: ‘centreon-icon.svg’
+
+     0K .                                                      52.0M=0s
+
+2025-05-27 13:46:52 (52.0 MB/s) - ‘centreon-icon.svg’ saved [1693]
+
