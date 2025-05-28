@@ -36,96 +36,72 @@ export class Centreon implements INodeType {
         return fetchFromCentreon.call(this, '/configuration/services/templates');
       },
       async getServices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-        // 1) Récupère credentials & version
-  const creds   = (await this.getCredentials('centreonApi')) as ICentreonCreds;
-  const version = this.getNodeParameter('version', 0) as string;
-  const baseUrl = creds.baseUrl.replace(/\/+$/, '');
+		  // 1) Credentials & version
+	  const creds   = (await this.getCredentials('centreonApi')) as ICentreonCreds;
+	  const version = this.getNodeParameter('version', 0) as string;
+	  const baseUrl = creds.baseUrl.replace(/\/+$/, '');
 
-  // 2) Authentification pour récupérer le token
-  let token: string;
-  try {
-    const authResp = await this.helpers.request({
-      method: 'POST',
-      uri:    `${baseUrl}/api/${version}/login`,
-      headers:{ 'Content-Type': 'application/json' },
-      body:   {
-        security: {
-          credentials: {
-            login:    creds.username,
-            password: creds.password,
-          },
-        },
-      },
-      json: true,
-      rejectUnauthorized: false,
-    });
-    token = (authResp as any).security?.token;
-    if (!token) {
-      throw new NodeOperationError(
-        this.getNode(),
-        'No authentication token returned from Centreon',
-      );
-    }
-  } catch (err: any) {
-    throw new NodeApiError(
-      this.getNode(),
-      err,
-      { message: 'Failed to authenticate to Centreon' },
-    );
-  }
+	  // 2) Authenticate
+	  let token: string;
+	  try {
+		const authResp = await this.helpers.request({
+		  method: 'POST',
+		  uri:    `${baseUrl}/api/${version}/login`,
+		  headers:{ 'Content-Type': 'application/json' },
+		  body:   { security: { credentials: { login: creds.username, password: creds.password } } },
+		  json:   true,
+		  rejectUnauthorized: false,
+		});
+		token = (authResp as any).security?.token;
+		if (!token) {
+		  throw new NodeOperationError(this.getNode(), 'No authentication token returned from Centreon');
+		}
+	  } catch (err: any) {
+		throw new NodeApiError(this.getNode(), err, { message: 'Failed to authenticate to Centreon' });
+	  }
 
-  // 3) Appel unique sans pagination, avec limit élevé
-  let resp: any;
-  try {
-    resp = await this.helpers.request({
-      method: 'GET',
-      uri:    `${baseUrl}/api/${version}/monitoring/services`,
-      headers:{
-        'Content-Type':  'application/json',
-        'X-AUTH-TOKEN':   token,
-      },
-      qs: { limit: 500000 },
-      json:   true,
-      rejectUnauthorized: false,
-    });
-  } catch (err: any) {
-    throw new NodeApiError(
-      this.getNode(),
-      err,
-      { message: 'Failed to fetch services' },
-    );
-  }
+	  // 3) Single GET with high limit
+	  let resp: any;
+	  try {
+		resp = await this.helpers.request({
+		  method: 'GET',
+		  uri:    `${baseUrl}/api/${version}/monitoring/services`,
+		  headers:{
+			'Content-Type':  'application/json',
+			'X-AUTH-TOKEN':   token,
+		  },
+		  qs: { limit: 500000 },
+		  json:   true,
+		  rejectUnauthorized: false,
+		});
+	  } catch (err: any) {
+		throw new NodeApiError(this.getNode(), err, { message: 'Failed to fetch services' });
+	  }
 
-  if (!Array.isArray(resp.result)) {
-    throw new NodeOperationError(
-      this.getNode(),
-      'Unexpected response format: "result" is not an array',
-    );
-  }
+	  if (!Array.isArray(resp.result)) {
+		throw new NodeOperationError(this.getNode(), 'Unexpected response format: "result" is not an array');
+	  }
 
-  // 4) Mapping des options
-  return (resp.result as Array<any>).map(item => {
-    const host = item.hosts;
-    if (!host || typeof host.id !== 'number') {
-      throw new NodeOperationError(
-        this.getNode(),
-        `Service item missing hosts information (service id: ${item.id})`,
-      );
-    }
-    const hostName    =
-      (host.display_name as string) ??
-      (host.name         as string) ??
-      'Unknown Host';
-    const serviceName =
-      (item.display_name as string) ??
-      (item.description  as string) ??
-      `Service ${item.id}`;
+	  // 4) Map every item, assume item.hosts always present
+	  return (resp.result as Array<any>).map((item) => {
+		const hostObj = item.hosts || {};
+		const hostName =
+		  hostObj.display_name ||
+		  hostObj.name         ||
+		  hostObj.alias        ||
+		  'Unknown Host';
 
-    return {
-      name:  `${hostName} – ${serviceName}`,
-      value: JSON.stringify({ hostId: host.id, serviceId: item.id }),
-    } as INodePropertyOptions;
-  });		
+		const serviceId   = item.id as number;
+		const serviceName =
+		  item.display_name ||
+		  item.description  ||
+		  `Service ${serviceId}`;
+
+		return {
+		  name:  `${hostName} – ${serviceName}`,
+		  value: JSON.stringify({ hostId: hostObj.id, serviceId }),
+		} as INodePropertyOptions;
+	  });
 	}
       }
   };
