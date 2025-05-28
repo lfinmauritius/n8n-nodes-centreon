@@ -169,7 +169,7 @@ async function getAuthToken(
 ): Promise<string> {
   const options = {
     method: 'POST',
-    uri: `${creds.baseUrl}/centreon/api/${version}/login`,
+    uri: `${creds.baseUrl}/api/${version}/login`,
     headers: { 'Content-Type': 'application/json' },
     body: {
       security: {
@@ -179,6 +179,12 @@ async function getAuthToken(
     json: true,
     rejectUnauthorized: !ignoreSsl,
   };
+
+  // Debug du payload et des options d'auth
+    // @ts-ignore: console might not be defined in TS lib
+
+  console.log('Auth request options:', JSON.stringify(options, null, 2));
+
   const response = (await this.helpers.request(options as any)) as { security?: { token?: string } };
 
   if (!response.security?.token) {
@@ -200,7 +206,7 @@ async function centreonRequest(
 ): Promise<any> {
   const options = {
     method,
-    uri: `${creds.baseUrl}/centreon/api/${version}${endpoint}`,
+    uri: `${creds.baseUrl}/api/${version}${endpoint}`,
     headers: {
       'Content-Type': 'application/json',
       'X-AUTH-TOKEN': token,
@@ -209,6 +215,12 @@ async function centreonRequest(
     json: true,
     rejectUnauthorized: !ignoreSsl,
   };
+
+  // Debug de la requête API Centreon
+    // @ts-ignore: console might not be defined in TS lib
+
+  console.log('Centreon request options:', JSON.stringify(options, null, 2));
+
   return this.helpers.request(options as any);
 }
 
