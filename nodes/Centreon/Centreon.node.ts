@@ -208,7 +208,7 @@ export class Centreon implements INodeType {
       },
       {
         displayName: 'Template(s) Names or IDs',
-        name: 'templates',
+        name: 'servicetemplates',
         type: 'multiOptions',
         typeOptions: { loadOptionsMethod: 'getServiceTemplates' },
         default: [],
@@ -306,7 +306,7 @@ export class Centreon implements INodeType {
           const name      = this.getNodeParameter('servicename', i) as string;
           const desc      = this.getNodeParameter('description', i) as string;
           const hostId    = this.getNodeParameter('hostId', i) as number;
-          const templates = this.getNodeParameter('templates', i, []) as number[];
+          const templates = this.getNodeParameter('servicetemplates', i, []) as number[];
           const body: IDataObject = { name, description: desc, host_id: hostId, templates };
           responseData = await centreonRequest.call(
             this, creds, token, 'POST', '/configuration/services', body, ignoreSsl, version,
