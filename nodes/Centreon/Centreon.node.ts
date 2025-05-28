@@ -25,6 +25,10 @@ export class Centreon implements INodeType {
       async getHostTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
         return fetchFromCentreon.call(this, '/configuration/hosts/templates');
       },
+      /** Host groupss */
+      async getHostGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+        return fetchFromCentreon.call(this, '/monitoring/hostgroups');
+      },
     },
   };
 
@@ -116,6 +120,16 @@ export class Centreon implements INodeType {
         description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
       },
       {
+        displayName: 'Hostgroups Names or IDs',
+        name: 'hostgroups',
+        type: 'multiOptions',
+        typeOptions: { loadOptionsMethod: 'getHostGroups' },
+        required: false,
+        default: [],
+        displayOptions: { show: { resource: ['host'], operation: ['add'] } },
+        description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+      },
+      {
         displayName: 'Options Avancées',
         name: 'advancedOptions',
         type: 'collection',
@@ -169,13 +183,14 @@ export class Centreon implements INodeType {
           const address = this.getNodeParameter('address', i) as string;
           const monitoringServerId = this.getNodeParameter('monitoringServerId', i) as number;
 	  const templates = this.getNodeParameter('templates', i, []) as number[];
+          const hostgroups = this.getNodeParameter('hostgroups', i, []) as number[];
           responseData = await centreonRequest.call(
             this,
             creds,
             token,
             'POST',
             '/configuration/hosts',
-            { name, alias: name, address, monitoring_server_id: monitoringServerId, templates },
+            { name, alias: name, address, monitoring_server_id: monitoringServerId, templates, groups: hostgroups },
             ignoreSsl,
             version,
           );
