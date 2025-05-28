@@ -86,9 +86,9 @@ export class Centreon implements INodeType {
         name: 'limit',
         type: 'number',
 	typeOptions: { minValue: 1 },
-        default: 10,
+        default: 50,
         displayOptions: { show: { resource: ['host'], operation: ['list'] } },
-        description: 'Maximum number of results to return',
+        description: 'Max number of results to return',
       },
       {
         displayName: 'Name',
