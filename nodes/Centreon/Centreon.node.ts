@@ -248,7 +248,7 @@ export class Centreon implements INodeType {
 	  displayOptions: {
 		show: { resource: ['host'], operation: ['ack'] },
 	  },
-	  description: "Garder l’acquittement en cas de changement d’état",
+	  description: "Whether to keep the acknowledgement on state change",
 	},
 	{
 	  displayName: 'Persistent',
@@ -258,7 +258,7 @@ export class Centreon implements INodeType {
 	  displayOptions: {
 		show: { resource: ['host'], operation: ['ack'] },
 	  },
-	  description: "Conserver l’acquittement après redémarrage du scheduler",
+	  description: "Whether to keep the acknowledgement after scheduler restart",
 	},
 	{
 	  displayName: 'Acknowledge Services Attached',
@@ -268,7 +268,7 @@ export class Centreon implements INodeType {
 	  displayOptions: {
 		show: { resource: ['host'], operation: ['ack'] },
 	  },
-	  description: "Acquitter aussi tous les services liés à cet hôte",
+	  description: "Whether to acknowledge the host\'s services",
 	},
       // ---- SERVICE: LIST ----
       {
