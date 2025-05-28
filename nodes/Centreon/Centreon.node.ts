@@ -34,6 +34,12 @@ export class Centreon implements INodeType {
       async getServiceTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
         return fetchFromCentreon.call(this, '/configuration/services/templates');
       },
+      async getServicesByHost(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	// récupère l’ID de l’hôte sélectionné
+	const hostId = this.getNodeParameter('hostId', 0) as number;
+	if (!hostId) return [];
+	  return fetchFromCentreon.call(this, `/monitoring/hosts/${hostId}/services`);
+      },
     },
   };
 
@@ -77,6 +83,7 @@ export class Centreon implements INodeType {
         options: [
           { name: 'List', value: 'list' },
           { name: 'Add', value: 'add' },
+	  { name: 'Acknowledge', value: 'ack' },
         ],
         default: 'list',
         description: 'Opération à réaliser',
@@ -202,6 +209,70 @@ export class Centreon implements INodeType {
         displayOptions: { show: { resource: ['host'], operation: ['add'] } },
         description: 'Choose from the list, or specify IDs using an expression. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
       },
+      // ---- HOST: ACK ----
+	{
+	  displayName: 'Host ID',
+	  name: 'hostId',
+	  type: 'options',
+	  typeOptions: { loadOptionsMethod: 'getHosts' },
+	  default: '',
+	  displayOptions: {
+		show: { resource: ['host'], operation: ['ack'] },
+	  },
+	  description:
+		'Choisissez l’hôte à acquitter (ID ou à partir de la liste)',
+	},
+	{
+	  displayName: 'Comment',
+	  name: 'comment',
+	  type: 'string',
+	  default: '',
+	  required: true,
+	  displayOptions: {
+		show: { resource: ['host'], operation: ['ack'] },
+	  },
+	  description: 'Raison de l’acquittement (obligatoire)',
+	},
+	{
+	  displayName: 'Notify',
+	  name: 'notify',
+	  type: 'boolean',
+	  default: false,
+	  displayOptions: {
+		show: { resource: ['host'], operation: ['ack'] },
+	  },
+	  description: "Envoyer une notification aux contacts liés à l’hôte",
+	},
+	{
+	  displayName: 'Sticky',
+	  name: 'sticky',
+	  type: 'boolean',
+	  default: false,
+	  displayOptions: {
+		show: { resource: ['host'], operation: ['ack'] },
+	  },
+	  description: "Garder l’acquittement en cas de changement d’état",
+	},
+	{
+	  displayName: 'Persistent',
+	  name: 'persistent',
+	  type: 'boolean',
+	  default: false,
+	  displayOptions: {
+		show: { resource: ['host'], operation: ['ack'] },
+	  },
+	  description: "Conserver l’acquittement après redémarrage du scheduler",
+	},
+	{
+	  displayName: 'Acknowledge Services Attached',
+	  name: 'ackServices',
+	  type: 'boolean',
+	  default: false,
+	  displayOptions: {
+		show: { resource: ['host'], operation: ['ack'] },
+	  },
+	  description: "Acquitter aussi tous les services liés à cet hôte",
+	},
       // ---- SERVICE: LIST ----
       {
         displayName: 'Host Name or ID',
@@ -234,15 +305,6 @@ export class Centreon implements INodeType {
       },
       // ---- SERVICE: ADD ----
       {
-        displayName: 'Service Name',
-        name: 'servicename',
-        default: '',
-        type: 'string',
-        required: true,
-        displayOptions: { show: { resource: ['service'], operation: ['add'] } },
-        description: 'Nom du service à créer',
-      },
-      {
         displayName: 'Host Name or ID',
         name: 'hostId',
         type: 'options',
@@ -251,6 +313,15 @@ export class Centreon implements INodeType {
         required: true,
         displayOptions: { show: { resource: ['service'], operation: ['add'] } },
         description: 'Hôte associé au service. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+      },
+      {
+        displayName: 'Service Name',
+        name: 'servicename',
+        default: '',
+        type: 'string',
+        required: true,
+        displayOptions: { show: { resource: ['service'], operation: ['add'] } },
+        description: 'Nom du service à créer',
       },
       {
         displayName: 'Template(s) Names or Name or ID',
@@ -316,6 +387,70 @@ export class Centreon implements INodeType {
             },
           ],
       },
+      // ---- SERVICE: ACK ----
+	{
+	  displayName: 'Host ID',
+	  name: 'hostId',
+	  type: 'options',
+	  typeOptions: { loadOptionsMethod: 'getHosts' },
+	  default: '',
+	  displayOptions: {
+		show: { resource: ['service'], operation: ['ack'] },
+	  },
+	  description: 'Hôte parent du service',
+	},
+	{
+	  displayName: 'Service ID',
+	  name: 'serviceId',
+	  type: 'options',
+	  typeOptions: { loadOptionsMethod: 'getServicesByHost' },
+	  default: '',
+	  displayOptions: {
+		show: { resource: ['service'], operation: ['ack'] },
+	  },
+	  description: 'Service à acquitter',
+	},
+	{
+	  displayName: 'Comment',
+	  name: 'comment',
+	  type: 'string',
+	  default: '',
+	  required: true,
+	  displayOptions: {
+		show: { resource: ['service'], operation: ['ack'] },
+	  },
+	  description: 'Raison de l’acquittement (obligatoire)',
+	},
+	{
+	  displayName: 'Notify',
+	  name: 'notify',
+	  type: 'boolean',
+	  default: false,
+	  displayOptions: {
+		show: { resource: ['service'], operation: ['ack'] },
+	  },
+	  description: 'Envoyer une notification aux contacts liés au service',
+	},
+	{
+	  displayName: 'Sticky',
+	  name: 'sticky',
+	  type: 'boolean',
+	  default: false,
+	  displayOptions: {
+		show: { resource: ['service'], operation: ['ack'] },
+	  },
+	  description: "Garder l’acquittement en cas de changement d’état",
+	},
+	{
+	  displayName: 'Persistent',
+	  name: 'persistent',
+	  type: 'boolean',
+	  default: false,
+	  displayOptions: {
+		show: { resource: ['service'], operation: ['ack'] },
+	  },
+	  description: "Conserver l’acquittement après redémarrage du scheduler",
+	},
       // ---- ADVANCED OPTIONS ----
       {
         displayName: 'Options Avancées',
@@ -397,6 +532,32 @@ export class Centreon implements INodeType {
             { name, alias: name, address, monitoring_server_id: monitoringServerId, templates, groups: hostgroups , macros},
             ignoreSsl, version,
           );
+        } else if (operation === 'ack') {
+	const hostId      = this.getNodeParameter('hostId',      i) as number;
+	  const comment     = this.getNodeParameter('comment',     i) as string;
+	  const notify      = this.getNodeParameter('notify',      i) as boolean;
+	  const sticky      = this.getNodeParameter('sticky',      i) as boolean;
+	  const persistent  = this.getNodeParameter('persistent',  i) as boolean;
+	  const ackServices = this.getNodeParameter('ackServices', i) as boolean;
+
+	  const body: IDataObject = {
+		comment,
+		notify,
+		sticky,
+		persistent,
+		acknowledge_services: ackServices,
+	  };
+
+	  responseData = await centreonRequest.call(
+		this,
+		creds,
+		token,
+		'POST',
+		`/monitoring/hosts/${hostId}/acknowledgements`,
+		body,
+		ignoreSsl,
+		version,
+	  );
         }
       }
       else if (resource === 'service') {
@@ -451,6 +612,31 @@ export class Centreon implements INodeType {
           responseData = await centreonRequest.call(
             this, creds, token, 'POST', '/configuration/services', body, ignoreSsl, version,
           );
+        } else if (operation === 'ack') {
+          const hostId     = this.getNodeParameter('hostId',     i) as number;
+	  const serviceId  = this.getNodeParameter('serviceId',  i) as number;
+	  const comment    = this.getNodeParameter('comment',    i) as string;
+	  const notify     = this.getNodeParameter('notify',     i) as boolean;
+	  const sticky     = this.getNodeParameter('sticky',     i) as boolean;
+	  const persistent = this.getNodeParameter('persistent', i) as boolean;
+
+	  const body: IDataObject = {
+		comment,
+		notify,
+		sticky,
+		persistent,
+	  };
+
+	  responseData = await centreonRequest.call(
+		this,
+		creds,
+		token,
+		'POST',
+		`/monitoring/hosts/${hostId}/services/${serviceId}/acknowledgements`,
+		body,
+		ignoreSsl,
+		version,
+	  );
         }
       }
 
