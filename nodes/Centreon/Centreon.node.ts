@@ -17,43 +17,13 @@ export class Centreon implements INodeType {
    */
    methods = {
     loadOptions: {
-      /**
-       * Fetch Centreon monitoring servers for dropdown
-       */
+	/** Monitoring servers */
       async getMonitoringServers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-        const creds = (await this.getCredentials('centreonApi')) as ICentreonCreds;
-        const version = this.getNodeParameter('version', 0) as string;
-        const baseUrl = creds.baseUrl.replace(/\/+$/, '');
-
-        // auth
-        const authResp = (await this.helpers.request({
-          method: 'POST',
-          uri: `${baseUrl}/api/${version}/login`,
-          headers: { 'Content-Type': 'application/json' },
-          body: { security: { credentials: { login: creds.username, password: creds.password } } },
-          json: true,
-          rejectUnauthorized: false,
-        } as any)) as { security?: { token?: string } };
-
-        const token = authResp.security?.token;
-        if (!token) {
-          throw new NodeOperationError(this.getNode(), 'Cannot authenticate to Centreon');
-        }
-
-        const serverResp = (await this.helpers.request({
-          method: 'GET',
-          uri: `${baseUrl}/api/${version}/configuration/monitoring-servers`,
-          headers: { 'Content-Type': 'application/json', 'X-AUTH-TOKEN': token },
-          json: true,
-          rejectUnauthorized: false,
-        } as any)) as { result?: Array<{ id: number; name: string }> };
-
-        const servers = serverResp.result;
-        if (!servers) {
-          throw new NodeOperationError(this.getNode(), 'Invalid response from Centreon');
-        }
-
-        return servers.map((s) => ({ name: s.name, value: s.id }));
+        return fetchFromCentreon.call(this, '/configuration/monitoring-servers');
+      },
+      /** Host templates */
+      async getHostTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+        return fetchFromCentreon.call(this, '/configuration/hosts/templates');
       },
     },
   };
@@ -188,13 +158,14 @@ export class Centreon implements INodeType {
           const name = this.getNodeParameter('name', i) as string;
           const address = this.getNodeParameter('address', i) as string;
           const monitoringServerId = this.getNodeParameter('monitoringServerId', i) as number;
+	  const templates = this.getNodeParameter('templates', i, []) as number[];
           responseData = await centreonRequest.call(
             this,
             creds,
             token,
             'POST',
             '/configuration/hosts',
-            { name, alias: name, address, monitoring_server_id: monitoringServerId },
+            { name, alias: name, address, monitoring_server_id: monitoringServerId, templates },
             ignoreSsl,
             version,
           );
@@ -210,6 +181,41 @@ export class Centreon implements INodeType {
 }
 
 /** Helper: auth */
+async function fetchFromCentreon(
+  this: ILoadOptionsFunctions,
+  endpoint: string,
+): Promise<INodePropertyOptions[]> {
+  const creds = (await this.getCredentials('centreonApi')) as ICentreonCreds;
+  const version = this.getNodeParameter('version', 0) as string;
+  const baseUrl = creds.baseUrl.replace(/\/+$/, '');
+
+  // auth
+  const authResp = (await this.helpers.request({
+    method: 'POST',
+    uri: `${baseUrl}/api/${version}/login`,
+    headers: { 'Content-Type': 'application/json' },
+    body: { security: { credentials: { login: creds.username, password: creds.password } } },
+    json: true,
+    rejectUnauthorized: false,
+  } as any)) as { security?: { token?: string } };
+
+  const token = authResp.security?.token;
+  if (!token) throw new NodeOperationError(this.getNode(), 'Cannot authenticate to Centreon');
+
+  const resp = (await this.helpers.request({
+    method: 'GET',
+    uri: `${baseUrl}/api/${version}${endpoint}`,
+    headers: { 'Content-Type': 'application/json', 'X-AUTH-TOKEN': token },
+    json: true,
+    rejectUnauthorized: false,
+  } as any)) as { result?: Array<{ id: number; name: string }> };
+
+  const list = resp.result;
+  if (!list) throw new NodeOperationError(this.getNode(), 'Invalid response from Centreon');
+
+  return list.map((e) => ({ name: e.name, value: e.id }));
+}
+
 async function getAuthToken(
   this: IExecuteFunctions,
   creds: ICentreonCreds,
