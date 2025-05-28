@@ -36,12 +36,12 @@ export class Centreon implements INodeType {
         return fetchFromCentreon.call(this, '/configuration/services/templates');
       },
       async getServices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
- 		  // 1) Récupère credentials et version
-	  const creds = (await this.getCredentials('centreonApi')) as ICentreonCreds;
+		// 1) Crédentiels & version
+	  const creds   = (await this.getCredentials('centreonApi')) as ICentreonCreds;
 	  const version = this.getNodeParameter('version', 0) as string;
 	  const baseUrl = creds.baseUrl.replace(/\/+$/, '');
 
-	  // 2) Authentification pour récupérer le token
+	  // 2) Authentification
 	  let token: string;
 	  try {
 		const authResp = await this.helpers.request({
@@ -66,17 +66,17 @@ export class Centreon implements INodeType {
 			'No authentication token returned from Centreon',
 		  );
 		}
-	  } catch (error: any) {
+	  } catch (err: any) {
 		throw new NodeApiError(
 		  this.getNode(),
-		  error,
+		  err,
 		  { message: 'Failed to authenticate to Centreon' },
 		);
 	  }
 
-	  // 3) Pagination manuelle pour récupérer tous les services
+	  // 3) Pagination manuelle
 	  const limit = 100;
-	  let page = 1;
+	  let page    = 1;
 	  const allItems: any[] = [];
 	  while (true) {
 		let resp: any;
@@ -92,10 +92,10 @@ export class Centreon implements INodeType {
 			json:   true,
 			rejectUnauthorized: false,
 		  });
-		} catch (error: any) {
+		} catch (err: any) {
 		  throw new NodeApiError(
 			this.getNode(),
-			error,
+			err,
 			{ message: `Error fetching services (page ${page})` },
 		  );
 		}
@@ -109,29 +109,43 @@ export class Centreon implements INodeType {
 
 		allItems.push(...resp.result);
 
-		const meta = resp.meta?.pagination;
+		const meta = resp.meta as { page: number; limit: number; total: number; };
+		// Arrête si on a tout lu
 		if (!meta || meta.page * meta.limit >= meta.total) {
 		  break;
 		}
 		page++;
 	  }
 
-	  // 4) Transformation en INodePropertyOptions
-	  return allItems.map((item: any) => {
-		// Récupère l'objet hosts qui contient l'ID et le display_name
-		const hostObj = item.hosts as { id: number; display_name: string; name: string };
-		const hostId = hostObj?.id;
-		// utilise display_name si disponible, sinon fallback sur name
-		const hostName = hostObj?.display_name ?? hostObj?.name ?? 'Unknown Host';
+	  // 4) Construction des options
+	  return allItems
+		.filter(item => item.hosts && typeof item.hosts === 'object')
+		.map((item: any) => {
+		  const hostObj = item.hosts as {
+			id: number;
+			alias?: string;
+			display_name?: string;
+			name?: string;
+		  };
 
-		const serviceId   = item.id as number;
-		const serviceName = (item.display_name as string) ?? (item.description as string) ?? `Service ${serviceId}`;
+		  const hostId   = hostObj.id;
+		  const hostName =
+			hostObj.alias         ||
+			hostObj.display_name  ||
+			hostObj.name         ||
+			'Unknown Host';
 
-		return {
-		  name:  `${hostName} – ${serviceName}`,
-		  value: JSON.stringify({ hostId, serviceId }),
-		} as INodePropertyOptions;
-	  });
+		  const serviceId   = item.id as number;
+		  const serviceName =
+			(item.display_name as string) ??
+			(item.description  as string) ??
+			`Service ${serviceId}`;
+
+		  return {
+			name:  `${hostName} – ${serviceName}`,
+			value: JSON.stringify({ hostId, serviceId }),
+		  } as INodePropertyOptions;
+		});
 	}
       }
   };
