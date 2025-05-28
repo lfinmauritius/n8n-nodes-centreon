@@ -27,7 +27,7 @@ export class Centreon implements INodeType {
       },
       /** Host groupss */
       async getHostGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-        return fetchFromCentreon.call(this, '/monitoring/hostgroups');
+        return fetchFromCentreon.call(this, '/configuration/hosts/groups');
       },
     },
   };
