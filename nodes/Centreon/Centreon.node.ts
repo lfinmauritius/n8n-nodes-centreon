@@ -106,14 +106,14 @@ export class Centreon implements INodeType {
         description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
       },
       {
-        displayName: 'Templates',
+        displayName: 'Templates Names or IDs',
         name: 'templates',
         type: 'multiOptions',
         typeOptions: { loadOptionsMethod: 'getHostTemplates' },
         required: true,
         default: [],
         displayOptions: { show: { resource: ['host'], operation: ['add'] } },
-        description: 'Select one or more host templates',
+        description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
       },
       {
         displayName: 'Options Avancées',
