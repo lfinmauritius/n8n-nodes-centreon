@@ -1,9 +1,11 @@
 import {
   IExecuteFunctions,
+  ILoadOptionsFunctions,
   INodeType,
   INodeTypeDescription,
   IDataObject,
   INodeExecutionData,
+  INodePropertyOptions,
   NodeOperationError,
   NodeConnectionType,
 } from 'n8n-workflow';
@@ -42,9 +44,7 @@ export class Centreon implements INodeType {
         name: 'resource',
         type: 'options',
         noDataExpression: true,
-        options: [
-          { name: 'Host', value: 'host' },
-        ],
+        options: [{ name: 'Host', value: 'host' }],
         default: 'host',
         description: 'Type de ressource Centreon',
       },
@@ -67,10 +67,7 @@ export class Centreon implements INodeType {
         default: '',
         required: true,
         displayOptions: {
-          show: {
-            resource: ['host'],
-            operation: ['add'],
-          },
+          show: { resource: ['host'], operation: ['add'] },
         },
         description: 'Nom de l’hôte à créer',
       },
@@ -81,12 +78,23 @@ export class Centreon implements INodeType {
         default: '',
         required: true,
         displayOptions: {
-          show: {
-            resource: ['host'],
-            operation: ['add'],
-          },
+          show: { resource: ['host'], operation: ['add'] },
         },
         description: 'Adresse IP de l’hôte',
+      },
+      {
+        displayName: 'Monitoring Server',
+        name: 'monitoringServerId',
+        type: 'options',
+        typeOptions: {
+          loadOptionsMethod: 'getMonitoringServers',
+        },
+        required: true,
+        default: '',
+        displayOptions: {
+          show: { resource: ['host'], operation: ['add'] },
+        },
+        description: 'Monitoring server to assign host to',
       },
       {
         displayName: 'Options Avancées',
@@ -138,13 +146,14 @@ export class Centreon implements INodeType {
         } else if (operation === 'add') {
           const name = this.getNodeParameter('name', i) as string;
           const address = this.getNodeParameter('address', i) as string;
+          const monitoringServerId = this.getNodeParameter('monitoringServerId', i) as number;
           responseData = await centreonRequest.call(
             this,
             creds,
             token,
             'POST',
             '/configuration/hosts',
-            { name, alias: name, address, monitoringServerId: 1 },
+            { name, alias: name, address, monitoringServerId },
             ignoreSsl,
             version,
           );
@@ -158,6 +167,47 @@ export class Centreon implements INodeType {
 
     const executionData = returnData.map(data => ({ json: data })) as INodeExecutionData[];
     return this.prepareOutputData(executionData);
+  }
+
+  /**
+   * Load options to get available monitoring servers
+   */
+  async getMonitoringServers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+    // Charger les credentials
+    const credentialsData = await this.getCredentials('centreonApi');
+    const creds = credentialsData as unknown as ICentreonCreds;
+    const version = this.getNodeParameter('version', 0) as string;
+    const ignoreSsl = false;
+
+    // Authentification manuelle pour load options
+    const authOptions = {
+      method: 'POST',
+      uri: `${creds.baseUrl}/api/${version}/login`,
+      headers: { 'Content-Type': 'application/json' },
+      body: {
+        security: { credentials: { login: creds.username, password: creds.password } },
+      },
+      json: true,
+      rejectUnauthorized: !ignoreSsl,
+    };
+    const authResponse = await this.helpers.request(authOptions as any) as { security?: { token?: string } };
+    if (!authResponse.security?.token) {
+      throw new NodeOperationError(this.getNode(), 'Authentification Centreon échouée pour load options');
+    }
+    const token = authResponse.security.token;
+
+    // Récupérer la liste des serveurs de monitoring
+    const serversOptions = {
+      method: 'GET',
+      uri: `${creds.baseUrl}/api/${version}/configuration/monitoring/servers`,
+      headers: { 'Content-Type': 'application/json', 'X-AUTH-TOKEN': token },
+      json: true,
+      rejectUnauthorized: !ignoreSsl,
+    };
+    const response = await this.helpers.request(serversOptions as any) as any;
+    const servers = response.result?.servers ?? response.servers ?? response;
+
+    return servers.map((srv: any) => ({ name: srv.name, value: srv.id }));
   }
 }
 
@@ -179,12 +229,6 @@ async function getAuthToken(
     json: true,
     rejectUnauthorized: !ignoreSsl,
   };
-
-  // Debug du payload et des options d'auth
-    // @ts-ignore: console might not be defined in TS lib
-
-  console.log('Auth request options:', JSON.stringify(options, null, 2));
-
   const response = (await this.helpers.request(options as any)) as { security?: { token?: string } };
 
   if (!response.security?.token) {
@@ -215,12 +259,6 @@ async function centreonRequest(
     json: true,
     rejectUnauthorized: !ignoreSsl,
   };
-
-  // Debug de la requête API Centreon
-    // @ts-ignore: console might not be defined in TS lib
-
-  console.log('Centreon request options:', JSON.stringify(options, null, 2));
-
   return this.helpers.request(options as any);
 }
 
