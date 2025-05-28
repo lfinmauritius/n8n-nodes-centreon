@@ -124,7 +124,6 @@ export class Centreon implements INodeType {
         name: 'hostgroups',
         type: 'multiOptions',
         typeOptions: { loadOptionsMethod: 'getHostGroups' },
-        required: false,
         default: [],
         displayOptions: { show: { resource: ['host'], operation: ['add'] } },
         description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
