@@ -1,6 +1,7 @@
 import {
   IExecuteFunctions,
   INodeType,
+  ILoadOptionsFunctions,
   INodeTypeDescription,
   IDataObject,
   INodeExecutionData,
@@ -68,29 +69,46 @@ export class Centreon implements INodeType {
     return this.prepareOutputData(executionData);
   }
 
-  async getMonitoringServers(this: IExecuteFunctions): Promise<INodePropertyOptions[]> {
-    const credentials = (await this.getCredentials('centreonApi')) as ICentreonCreds;
-    const version = this.getNodeParameter('version', 0) as string;
-    const baseUrl = credentials.baseUrl.replace(/\/+$/, '');
+  methods = {
+    // Dynamic options available in the UI
+    loadOptions: {
+      async getMonitoringServers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+        const credentials = (await this.getCredentials('centreonApi')) as ICentreonCreds;
+        const version = this.getNodeParameter('version', 0) as string;
+        const baseUrl = credentials.baseUrl.replace(/\/+\$/,'');
 
-    // Authenticate
-    const token = await getAuthToken.call(this, credentials, false, version);
+        // Authenticate
+        const tokenResponse = (await this.helpers.request({
+          method: 'POST',
+          uri: `${baseUrl}/api/${version}/login`,
+          headers: { 'Content-Type': 'application/json' },
+          body: { security: { credentials: { login: credentials.username, password: credentials.password } } },
+          json: true,
+          rejectUnauthorized: false,
+        } as any)) as { security?: { token?: string } };
 
-    // Fetch monitoring servers
-    const response = (await this.helpers.request({
-      method: 'GET',
-      uri: `${baseUrl}/api/${version}/configuration/monitoring-servers`,
-      headers: { 'Content-Type': 'application/json', 'X-AUTH-TOKEN': token },
-      json: true,
-      rejectUnauthorized: false,
-    } as any)) as { result?: Array<{ id: number; name: string }> };
+        const token = tokenResponse.security?.token;
+        if (!token) {
+          throw new NodeOperationError(this.getNode(), 'Cannot authenticate to Centreon');
+        }
 
-    if (!response.result) {
-      throw new NodeOperationError(this.getNode(), 'Invalid response format');
-    }
+        // Fetch monitoring servers
+        const response = (await this.helpers.request({
+          method: 'GET',
+          uri: `${baseUrl}/api/${version}/configuration/monitoring-servers`,
+          headers: { 'Content-Type': 'application/json', 'X-AUTH-TOKEN': token },
+          json: true,
+          rejectUnauthorized: false,
+        } as any)) as { result?: Array<{ id: number; name: string }> };
 
-    return response.result.map(srv => ({ name: srv.name, value: srv.id }));
-  }
+        if (!response.result) {
+          throw new NodeOperationError(this.getNode(), 'Invalid response from Centreon');
+        }
+
+        return response.result.map((srv) => ({ name: srv.name, value: srv.id }));
+      },
+    },
+  };
 }
 
 async function getAuthToken(this: IExecuteFunctions, creds: ICentreonCreds, ignoreSsl: boolean, version: string): Promise<string> {
