@@ -676,7 +676,7 @@ export class Centreon implements INodeType {
 	const persistent = this.getNodeParameter('persistent', i) as boolean;
 
 	// 3) Build body
-	const body: IDataObject = { comment, notify, sticky, persistent };
+	const body: IDataObject = { comment, is_notify_contacts: notify, is_sticky: sticky, is_persistent_comment: persistent };
 
 	// 4) Appel de l’API
 	responseData = await centreonRequest.call(
