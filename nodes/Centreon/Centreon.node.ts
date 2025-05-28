@@ -172,25 +172,31 @@ export class Centreon implements INodeType {
   /**
    * Load options to get available monitoring servers
    */
+
   async getMonitoringServers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-    const credentialsData = await this.getCredentials('centreonApi');
-    const creds = credentialsData as unknown as ICentreonCreds;
-    const version = this.getNodeParameter('version', 0) as string;
-    const ignoreSsl = false;
+    try {
+      const credentialsData = await this.getCredentials('centreonApi');
+      const creds = credentialsData as unknown as ICentreonCreds;
+      const version = this.getNodeParameter('version', 0) as string;
+      const ignoreSsl = false;
 
-    // Use correct this for auth
-    const token = await getAuthToken.call(this as unknown as IExecuteFunctions, creds, ignoreSsl, version);
+      // Authenticate
+      const token = await getAuthToken.call(this as unknown as IExecuteFunctions, creds, ignoreSsl, version);
 
-    const response = (await this.helpers.request({
-      method: 'GET',
-      uri: `${creds.baseUrl}/api/${version}/configuration/monitoring-servers`,
-      headers: { 'Content-Type': 'application/json', 'X-AUTH-TOKEN': token },
-      json: true,
-      rejectUnauthorized: !ignoreSsl,
-    } as any)) as { result: Array<{ id: number; name: string }> };
+      // Fetch monitoring servers
+      const response = (await this.helpers.request({
+        method: 'GET',
+        uri: `${creds.baseUrl}/api/${version}/configuration/monitoring-servers`,
+        headers: { 'Content-Type': 'application/json', 'X-AUTH-TOKEN': token },
+        json: true,
+        rejectUnauthorized: !ignoreSsl,
+      } as any)) as { result: Array<{ id: number; name: string }> };
 
-    const servers = response.result;
-    return servers.map((srv) => ({ name: srv.name, value: srv.id }));
+      const servers = response.result;
+      return servers.map((srv) => ({ name: srv.name, value: srv.id }));
+    } catch (error) {
+      throw new NodeOperationError(this.getNode(), `Error fetching options from Centreon: ${error.message}`);
+    }
   }
 }
 
