@@ -60,7 +60,7 @@ export class Centreon implements INodeType {
     });
     token = (authResp as any).security?.token;
     if (!token) {
-      throw new NodeApiError('No token returned');
+      throw new Error('No token returned');
     }
   } catch (err: any) {
     throw new NodeOperationError(
