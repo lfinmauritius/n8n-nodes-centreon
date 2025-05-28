@@ -1,5 +1,14 @@
 import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
+/**
+ * Interface exportée pour typer les credentials dans ton nœud
+ */
+export interface ICentreonCreds {
+	baseUrl: string;
+	username: string;
+	password: string;
+}
+
 export class CentreonApi implements ICredentialType {
 	name = 'centreonApi';
 	displayName = 'Centreon API';
@@ -28,12 +37,6 @@ export class CentreonApi implements ICredentialType {
 			default: '',
 			required: true,
 		},
-                {
-		displayName: 'Ignore SSL errors',
-		name: 'ignoreSsl',
-		type: 'boolean',
-		default: false,
-		description: 'Skip TLS certificate validation (self-signed certs)',
-	        },
 	];
 }
+
