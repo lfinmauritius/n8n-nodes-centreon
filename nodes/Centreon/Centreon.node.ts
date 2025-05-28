@@ -1,4 +1,4 @@
- import {
+import {
   IExecuteFunctions,
   INodeType,
   INodeTypeDescription,
@@ -17,7 +17,7 @@ export class Centreon implements INodeType {
     group: ['transform'],
     version: 1,
     subtitle: '{{ $parameter.resource }}: {{ $parameter.operation }}',
-    description: 'Interagir avec l’API Centreon Web (v2).',
+    description: 'Interagir avec l’API Centreon Web (v2)',
     defaults: {
       name: 'Centreon',
     },
@@ -35,7 +35,7 @@ export class Centreon implements INodeType {
         name: 'version',
         type: 'string',
         default: 'latest',
-        description: 'Version de l’API (e.g., latest, v24.10).',
+        description: 'Version de l’API (e.g., latest, v24.10)',
       },
       {
         displayName: 'Resource',
@@ -46,7 +46,7 @@ export class Centreon implements INodeType {
           { name: 'Host', value: 'host' },
         ],
         default: 'host',
-        description: 'Type de ressource Centreon.',
+        description: 'Type de ressource Centreon',
       },
       {
         displayName: 'Operation',
@@ -58,7 +58,7 @@ export class Centreon implements INodeType {
           { name: 'Add', value: 'add' },
         ],
         default: 'list',
-        description: 'Opération à réaliser.',
+        description: 'Opération à réaliser',
       },
       {
         displayName: 'Name',
@@ -72,7 +72,7 @@ export class Centreon implements INodeType {
             operation: ['add'],
           },
         },
-        description: 'Nom de l’hôte à créer.',
+        description: 'Nom de l’hôte à créer',
       },
       {
         displayName: 'Address',
@@ -86,7 +86,7 @@ export class Centreon implements INodeType {
             operation: ['add'],
           },
         },
-        description: 'Adresse IP de l’hôte.',
+        description: 'Adresse IP de l’hôte',
       },
       {
         displayName: 'Options Avancées',
@@ -100,7 +100,7 @@ export class Centreon implements INodeType {
             name: 'ignoreSsl',
             type: 'boolean',
             default: false,
-            description: 'Whether to ignore TLS certificate errors.',
+            description: 'Whether to ignore TLS certificate errors',
           },
         ],
       },
@@ -182,7 +182,7 @@ async function getAuthToken(
   const response = (await this.helpers.request(options as any)) as { security?: { token?: string } };
 
   if (!response.security?.token) {
-    throw new NodeOperationError(this.getNode(), 'Authentification Centreon échouée (pas de token).');
+    throw new NodeOperationError(this.getNode(), 'Authentification Centreon échouée (pas de token)');
   }
 
   return response.security.token;
@@ -211,3 +211,4 @@ async function centreonRequest(
   };
   return this.helpers.request(options as any);
 }
+
