@@ -3,8 +3,16 @@ import {
 	INodeTypeDescription,
 	IExecuteFunctions,
         NodeConnectionType, 
-        NodeApiError
+        NodeApiError,
+        IHttpRequestOptions
 } from 'n8n-workflow';
+
+interface ICentreonCreds {
+	baseUrl: string;
+	username: string;
+	password: string;
+	ignoreSsl?: boolean;
+}
 
 export class Centreon implements INodeType {
 	description: INodeTypeDescription = {
@@ -53,7 +61,9 @@ export class Centreon implements INodeType {
 
 	async execute(this: IExecuteFunctions) {
 		/* 1. Auth */
-		const creds = await this.getCredentials('centreonApi');
+                const rawCreds = await this.getCredentials('centreonApi');
+                const creds = rawCreds as unknown as ICentreonCreds;
+
 		const token = await getAuthToken.call(this, creds);
 
 		/* 2. Dispatcher */
@@ -66,19 +76,25 @@ export class Centreon implements INodeType {
 			let responseData;
 			if (resource === 'host') {
 				if (operation === 'list') {
-					responseData = await centreonRequest.call(this, token, 'GET', '/monitoring/hosts');
+					responseData = await centreonRequest.call(this, creds, token, 'GET', '/monitoring/hosts');
 				}
 				if (operation === 'add') {
 					const name = this.getNodeParameter('name', i) as string;
 					const address = this.getNodeParameter('address', i) as string;
-
-					responseData = await centreonRequest.call(
-						this,
+                                        const responseData = await centreonRequest.call(
+                                   		this,
+						creds,                 // ← nouvel argument
 						token,
 						'POST',
 						'/configuration/hosts',
-						{ name, address, monitoringServerId: 1 },
+                                                {
+		    					name,
+							alias: name,
+							address,
+							monitoringServerId: 1,
+						},
 					);
+					returnData.push(responseData); 
 				}
 				/* etc. */
 			}
@@ -88,11 +104,10 @@ export class Centreon implements INodeType {
 	}
 }
 
-
 async function getAuthToken(
 	this: IExecuteFunctions,
-	creds: { baseUrl: string; username: string; password: string; ignoreSsl?: boolean },
-) {
+	creds: ICentreonCreds,
+): Promise<string> {
 	const url = `${creds.baseUrl.replace(/\/+$/, '')}/centreon/api/latest/login`;
 
 	const payload = {
@@ -104,14 +119,19 @@ async function getAuthToken(
 		},
 	};
 
-	const res = await this.helpers.httpRequest({
+	/* --- options séparé pour éviter TS2353 --- */
+	const options: IHttpRequestOptions = {
 		method: 'POST',
 		url,
 		headers: { 'Content-Type': 'application/json' },
 		json: true,
 		body: payload,
-		rejectUnauthorized: !creds.ignoreSsl,
-	});
+	};
+
+	// clé non typée → on la pose après coup
+	(options as any).rejectUnauthorized = !creds.ignoreSsl;
+
+	const res = await this.helpers.httpRequest(options);
 
 	const token = res?.security?.token as string | undefined;
 	if (!token) {
@@ -125,18 +145,23 @@ async function getAuthToken(
 
 async function centreonRequest(
 	this: IExecuteFunctions,
+	creds: ICentreonCreds,           // ← on passe l’objet credential complet
 	token: string,
 	method: 'GET' | 'POST' | 'PUT' | 'DELETE',
 	endpoint: string,
 	body: object = {},
 ) {
-	const { baseUrl } = (await this.getCredentials('centreonApi')) as any;
-	return this.helpers.httpRequest({
+	const options: IHttpRequestOptions = {
 		method,
-		url: `${baseUrl}/centreon/api/latest${endpoint}`,
+		url: `${creds.baseUrl.replace(/\/+$/, '')}/centreon/api/latest${endpoint}`,
 		headers: { 'X-AUTH-TOKEN': token },
 		json: true,
-		body: Object.keys(body).length ? body : undefined,
-	});
-}
+	};
 
+	if (Object.keys(body).length) options.body = body;
+
+	// ← ICI : on insère l’option SSL
+	(options as any).rejectUnauthorized = !creds.ignoreSsl;
+
+	return this.helpers.httpRequest(options);
+}

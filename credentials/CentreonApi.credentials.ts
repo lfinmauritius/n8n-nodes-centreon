@@ -28,5 +28,12 @@ export class CentreonApi implements ICredentialType {
 			default: '',
 			required: true,
 		},
+                {
+		displayName: 'Ignore SSL errors',
+		name: 'ignoreSsl',
+		type: 'boolean',
+		default: false,
+		description: 'Skip TLS certificate validation (self-signed certs)',
+	        },
 	];
 }
