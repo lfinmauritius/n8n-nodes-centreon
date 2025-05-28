@@ -238,7 +238,7 @@ export class Centreon implements INodeType {
 	  type: 'boolean',
 	  default: false,
 	  displayOptions: { show: { resource: ['host'], operation: ['ack'] } },
-	  description: "Envoyer une notification aux contacts lies à l’hote",
+	  description: 'Envoyer une notification aux contacts lies à l\'hote',
 	},
 	{
 	  displayName: 'Sticky',
