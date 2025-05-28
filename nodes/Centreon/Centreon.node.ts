@@ -657,7 +657,7 @@ export class Centreon implements INodeType {
         } else if (operation === 'ack') {
 	  	// 1) Récupère et parse le JSON
 	const serviceJson = this.getNodeParameter('service', i) as string;
-	let { hostId, serviceId } = JSON.parse(serviceJson) as {
+	const { hostId, serviceId } = JSON.parse(serviceJson) as {
 	  hostId: number;
 	  serviceId: number;
 	};
