@@ -426,7 +426,7 @@ export class Centreon implements INodeType {
 	  displayOptions: {
 		show: { resource: ['service'], operation: ['ack'] },
 	  },
-	  description: 'Envoyer une notification aux contacts liés au service',
+	  description: 'Whether to send a notification to the service\'s contacts',
 	},
 	{
 	  displayName: 'Sticky',
@@ -436,7 +436,7 @@ export class Centreon implements INodeType {
 	  displayOptions: {
 		show: { resource: ['service'], operation: ['ack'] },
 	  },
-	  description: "Garder l’acquittement en cas de changement d’état",
+	  description: "Whether to keep the acknowledgement on state change",
 	},
 	{
 	  displayName: 'Persistent',
@@ -446,7 +446,7 @@ export class Centreon implements INodeType {
 	  displayOptions: {
 		show: { resource: ['service'], operation: ['ack'] },
 	  },
-	  description: "Conserver l’acquittement après redémarrage du scheduler",
+	  description: "Whether to keep acknowledge even if the engine restarts",
 	},
       // ---- ADVANCED OPTIONS ----
       {
