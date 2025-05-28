@@ -83,7 +83,7 @@ export class Centreon implements INodeType {
       },
       // ---- HOST: LIST ----
       {
-        displayName: 'Host Name (Like Format)',
+        displayName: 'Host Name (Like format)',
         name: 'filterName',
         type: 'string',
         default: '',
@@ -126,7 +126,7 @@ export class Centreon implements INodeType {
         typeOptions: { loadOptionsMethod: 'getMonitoringServers' },
         default: '',
         displayOptions: { show: { resource: ['host'], operation: ['add'] } },
-        description: 'Choose from the list, or specify an ID using an expression. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+        description: 'Choose from the list, or specify an ID using an expression',
       },
       {
         displayName: 'Templates Names or IDs',
@@ -136,7 +136,7 @@ export class Centreon implements INodeType {
         required: true,
         default: [],
         displayOptions: { show: { resource: ['host'], operation: ['add'] } },
-        description: 'Choose from the list, or specify IDs using an expression. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+        description: 'Choose from the list, or specify IDs using an expression',
       },
       {
         displayName: 'Hostgroups Names or IDs',
@@ -145,11 +145,11 @@ export class Centreon implements INodeType {
         typeOptions: { loadOptionsMethod: 'getHostGroups' },
         default: [],
         displayOptions: { show: { resource: ['host'], operation: ['add'] } },
-        description: 'Choose from the list, or specify IDs using an expression. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+        description: 'Choose from the list, or specify IDs using an expression',
       },
       // ---- SERVICE: LIST ----
       {
-        displayName: 'Service Name (Like Format)',
+        displayName: 'Service Name (Like format)',
         name: 'filterName',
         type: 'string',
         default: '',
@@ -169,7 +169,6 @@ export class Centreon implements INodeType {
       {
         displayName: 'Service Name',
         name: 'name',
-        default: '',
         type: 'string',
         default: '',
         required: true,
@@ -189,7 +188,6 @@ export class Centreon implements INodeType {
         displayName: 'Host',
         name: 'hostId',
         type: 'options',
-        default: '',
         typeOptions: { loadOptionsMethod: 'getHosts' },
         required: true,
 	default: '',
@@ -197,13 +195,13 @@ export class Centreon implements INodeType {
         description: 'Hôte associé au service',
       },
       {
-        displayName: 'Template(s) Names or IDs',
+        displayName: 'Template(s)',
         name: 'templates',
         type: 'multiOptions',
         typeOptions: { loadOptionsMethod: 'getServiceTemplates' },
         default: [],
         displayOptions: { show: { resource: ['service'], operation: ['add'] } },
-        description: 'Templates de service à appliquer. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+        description: 'Templates de service à appliquer',
       },
       // ---- ADVANCED OPTIONS ----
       {

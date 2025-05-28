@@ -1,0 +1,11 @@
+--- a/nodes/Centreon/Centreon.node.ts
++++ b/nodes/Centreon/Centreon.node.ts
+@@ -137,7 +137,7 @@ export class Centreon implements INodeType {
+       {
+         displayName: 'Limit',
+         name: 'limit',
+-        type: 'number',
++        type: 'number',
+         typeOptions: { minValue: 1 },
+         default: 50,
+         displayOptions: { show: { resource: ['host'], operation: ['list'] } },
