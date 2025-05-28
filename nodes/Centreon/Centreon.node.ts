@@ -74,6 +74,22 @@ export class Centreon implements INodeType {
         description: 'Opération à réaliser',
       },
       {
+        displayName: 'Host Name (Regex)',
+        name: 'filterName',
+        type: 'string',
+        default: '',
+        displayOptions: { show: { resource: ['host'], operation: ['list'] } },
+        description: 'Regex to filter hosts by name',
+      },
+      {
+        displayName: 'Limit',
+        name: 'limit',
+        type: 'number',
+        default: 10,
+        displayOptions: { show: { resource: ['host'], operation: ['list'] } },
+        description: 'Maximum number of results to return',
+      },
+      {
         displayName: 'Name',
         name: 'name',
         type: 'string',
@@ -167,16 +183,27 @@ export class Centreon implements INodeType {
 
       if (resource === 'host') {
         if (operation === 'list') {
+	  const filterName = this.getNodeParameter('filterName', i, '') as string;
+          const limit = this.getNodeParameter('limit', i, 10) as number;
+          // Build server-side search and limit parameters
+          const params: string[] = [];
+          if (filterName) {
+            params.push(`search=${encodeURIComponent(JSON.stringify({ 'host.name': filterName }))}`);
+          }
+          if (limit) {
+            params.push(`limit=${limit}`);
+          }
+          const query = params.length ? `?${params.join('&')}` : '';
           responseData = await centreonRequest.call(
             this,
             creds,
             token,
             'GET',
-            '/monitoring/hosts',
+            `/monitoring/hosts${query}`,
             {},
             ignoreSsl,
             version,
-          );
+          ); 
         } else if (operation === 'add') {
           const name = this.getNodeParameter('name', i) as string;
           const address = this.getNodeParameter('address', i) as string;
