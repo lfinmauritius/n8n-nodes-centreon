@@ -139,12 +139,59 @@ export class Centreon implements INodeType {
         description: 'Choose from the list, or specify IDs using an expression. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
       },
       {
-        displayName: 'Macros',
-        name: 'macros',
-        type: 'string',
-        default: '',
-        displayOptions: { show: { resource: ['host'], operation: ['add'] } },
-        description: 'Liste de macros séparées par “|”. Ex : TIMEOUT|60|JMXVALUE|5 => 2 macros.',
+	  displayName: 'Macros',
+	  name: 'macros',
+	  type: 'fixedCollection',
+	  typeOptions: {
+	    multipleValues: true,
+	  },
+	  placeholder: 'Add Macro',
+	  default: { macroValues: [] },
+	  displayOptions: {
+	    show: {
+	      resource: ['host'],        // ou ['service'] pour le bloc service:add
+	      operation: ['add'],
+	    },
+	  },
+	  description: 'Define one or more macros for this resource.',
+	  options: [
+	    {
+	      displayName: 'Macro',
+	      name: 'macroValues',
+	      values: [
+	        {
+	          displayName: 'Name',
+	          name: 'name',
+	          type: 'string',
+	          default: '',
+	          required: true,
+	          description: 'Name of the macro',
+	        },
+	        {
+	          displayName: 'Value',
+	          name: 'value',
+	          type: 'string',
+        	  default: '',
+	          required: true,
+	          description: 'Value of the macro',
+	        },
+	        {
+	          displayName: 'Is Password',
+	          name: 'isPassword',
+	          type: 'boolean',
+	          default: false,
+	          description: 'Whether this macro is a password',
+	        },
+	        {
+	          displayName: 'Description',
+        	  name: 'description',
+	          type: 'string',
+	          default: '',
+	          description: 'Optional description of the macro',
+	        },
+	      ],
+	    },
+	  ],
       },
       {
         displayName: 'Hostgroups Names or IDs',
@@ -224,12 +271,59 @@ export class Centreon implements INodeType {
         description: 'Templates de service à appliquer. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
       },
       {
-        displayName: 'Macros',
-        name: 'macros',
-        type: 'string',
-        default: '',
-        displayOptions: { show: { resource: ['service'], operation: ['add'] } },
-        description: 'Liste de macros séparées par “|”. Ex : WARNING|1|CRITICAL|2 => 2 macros.',
+          displayName: 'Macros',
+          name: 'macros',
+          type: 'fixedCollection',
+          typeOptions: {
+            multipleValues: true,
+          },
+          placeholder: 'Add Macro',
+          default: { macroValues: [] },
+          displayOptions: {
+            show: {
+              resource: ['service'],        // ou ['service'] pour le bloc service:add
+              operation: ['add'],
+            },
+          },
+          description: 'Define one or more macros for this resource.',
+          options: [
+            {
+              displayName: 'Macro',
+              name: 'macroValues',
+              values: [
+                {
+                  displayName: 'Name',
+                  name: 'name',
+                  type: 'string',
+                  default: '',
+                  required: true,
+                  description: 'Name of the macro',
+                },
+                {
+                  displayName: 'Value',
+                  name: 'value',
+                  type: 'string',
+                  default: '',
+                  required: true,
+                  description: 'Value of the macro',
+                },
+                {
+                  displayName: 'Is Password',
+                  name: 'isPassword',
+                  type: 'boolean',
+                  default: false,
+                  description: 'Whether this macro is a password',
+                },
+                {
+                  displayName: 'Description',
+                  name: 'description',
+                  type: 'string',
+                  default: '',
+                  description: 'Optional description of the macro',
+                },
+              ],
+            },
+          ],
       },
       // ---- ADVANCED OPTIONS ----
       {
@@ -287,36 +381,26 @@ export class Centreon implements INodeType {
           const monitoringServerId = this.getNodeParameter('monitoringServerId', i) as number;
           const templates          = this.getNodeParameter('templates', i, []) as number[];
           const hostgroups         = this.getNodeParameter('hostgroups', i, []) as number[];
-	  const macrosString = this.getNodeParameter('macros', i, '') as string;
+	  const macroItems = this.getNodeParameter(
+	    'macros.macroValues',
+	    i,
+	    [],
+	  ) as Array<{
+	  name: string;
+	  value: string;
+	  isPassword: boolean;
+	  description: string;
+	}>;
 
-	  // 2) Parse et valide
-	  const macros: IDataObject[] = [];
-	  if (macrosString.trim() !== '') {
-	    const parts = macrosString.split('|');
-
-	  // s'il n'y a pas de pipe du tout -> une seule valeur => erreur
-	  if (parts.length === 1) {
-	    throw new NodeOperationError(
-	      this.getNode(),
-	      'Format des macros invalide : veuillez fournir au moins un couple KEY|VALUE.',
-	    );
-	  }
-	  // si nombre impair de segments -> clé/valeur manquants => erreur
-	  if (parts.length % 2 !== 0) {
-	    throw new NodeOperationError(
-	      this.getNode(),
-	      'Format des macros invalide : chaque clé doit avoir une valeur associée.',
-	    );
-	  }
-
-	  // on construit le tableau
-	  for (let j = 0; j < parts.length; j += 2) {
-	    macros.push({
-	      name:  parts[j],
-	      value: parts[j + 1],
-	      });
-	    }
-	  }
+	// Transforme en format API Centreon
+	const macros = macroItems.map((m) => {
+	  return {
+	    name:        m.name,
+	    value:       m.value,
+	    is_password: m.isPassword,
+	    description: m.description,  // toujours présent, même vide
+	  } as IDataObject;
+	});
           responseData = await centreonRequest.call(
             this, creds, token, 'POST', '/configuration/hosts',
             { name, alias: name, address, monitoring_server_id: monitoringServerId, templates, groups: hostgroups , macros},
@@ -353,36 +437,26 @@ export class Centreon implements INodeType {
           const desc      = this.getNodeParameter('description', i) as string;
           const hostId    = this.getNodeParameter('hostId', i) as number;
           const templates = this.getNodeParameter('servicetemplates', i, []) as number[];
-	  const macrosString = this.getNodeParameter('macros', i, '') as string;
+	  const macroItems = this.getNodeParameter(
+            'macros.macroValues',
+            i,
+            [],
+          ) as Array<{
+          name: string;
+          value: string;
+          isPassword: boolean;
+          description: string;
+        }>;
 
-          // 2) Parse et valide
-          const macros: IDataObject[] = [];
-          if (macrosString.trim() !== '') {
-            const parts = macrosString.split('|');
-
-          // s'il n'y a pas de pipe du tout -> une seule valeur => erreur
-          if (parts.length === 1) {
-            throw new NodeOperationError(
-              this.getNode(),
-              'Format des macros invalide : veuillez fournir au moins un couple KEY|VALUE.',
-            );
-          }
-          // si nombre impair de segments -> clé/valeur manquants => erreur
-          if (parts.length % 2 !== 0) {
-            throw new NodeOperationError(
-              this.getNode(),
-              'Format des macros invalide : chaque clé doit avoir une valeur associée.',
-            );
-          }
-
-          // on construit le tableau
-          for (let j = 0; j < parts.length; j += 2) {
-            macros.push({
-              name:  parts[j],
-              value: parts[j + 1],
-              });
-            }
-          }
+        // Transforme en format API Centreon
+        const macros = macroItems.map((m) => {
+          return {
+            name:        m.name,
+            value:       m.value,
+            is_password: m.isPassword,
+            description: m.description,  // toujours présent, même vide
+          } as IDataObject;
+        });
           const body: IDataObject = { name, description: desc, host_id: hostId, templates, macros };
           responseData = await centreonRequest.call(
             this, creds, token, 'POST', '/configuration/services', body, ignoreSsl, version,
