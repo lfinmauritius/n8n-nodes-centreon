@@ -12,6 +12,52 @@ import {
 import { ICentreonCreds } from '../../credentials/CentreonApi.credentials';
 
 export class Centreon implements INodeType {
+  /**
+   * n8n dynamic option methods
+   */
+  public methods = {
+    loadOptions: {
+      /**
+       * Fetch Centreon monitoring servers for dropdown
+       */
+      async getMonitoringServers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+        const creds = (await this.getCredentials('centreonApi')) as ICentreonCreds;
+        const version = this.getNodeParameter('version', 0) as string;
+        const baseUrl = creds.baseUrl.replace(/\/+$/, '');
+
+        // auth
+        const authResp = (await this.helpers.request({
+          method: 'POST',
+          uri: `${baseUrl}/api/${version}/login`,
+          headers: { 'Content-Type': 'application/json' },
+          body: { security: { credentials: { login: creds.username, password: creds.password } } },
+          json: true,
+          rejectUnauthorized: false,
+        } as any)) as { security?: { token?: string } };
+
+        const token = authResp.security?.token;
+        if (!token) {
+          throw new NodeOperationError(this.getNode(), 'Cannot authenticate to Centreon');
+        }
+
+        const serverResp = (await this.helpers.request({
+          method: 'GET',
+          uri: `${baseUrl}/api/${version}/configuration/monitoring-servers`,
+          headers: { 'Content-Type': 'application/json', 'X-AUTH-TOKEN': token },
+          json: true,
+          rejectUnauthorized: false,
+        } as any)) as { result?: Array<{ id: number; name: string }> };
+
+        const servers = serverResp.result;
+        if (!servers) {
+          throw new NodeOperationError(this.getNode(), 'Invalid response from Centreon');
+        }
+
+        return servers.map((s) => ({ name: s.name, value: s.id }));
+      },
+    },
+  };
+
   description: INodeTypeDescription = {
     displayName: 'Centreon',
     name: 'centreon',
@@ -240,3 +286,4 @@ async function centreonRequest(
     rejectUnauthorized: !ignoreSsl,
   } as any);
 }
+
