@@ -34,11 +34,76 @@ export class Centreon implements INodeType {
       async getServiceTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
         return fetchFromCentreon.call(this, '/configuration/services/templates');
       },
-      async getServicesByHost(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	// récupère l’ID de l’hôte sélectionné
-	const hostId = this.getNodeParameter('hostId', 0) as number;
-	if (!hostId) return [];
-	  return fetchFromCentreon.call(this, `/monitoring/hosts/${hostId}/services`);
+      async getServices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+		  const creds   = (await this.getCredentials('centreonApi')) as ICentreonCreds;
+	  const version = this.getNodeParameter('version', 0) as string;
+	  const baseUrl = creds.baseUrl.replace(/\/+$/, '');
+
+	  // 1) Authentification
+	  const auth = await this.helpers.request({
+		method: 'POST',
+		uri:    `${baseUrl}/api/${version}/login`,
+		headers:{ 'Content-Type': 'application/json' },
+		body:   {
+		  security: {
+			credentials: {
+			  login:    creds.username,
+			  password: creds.password,
+			},
+		  },
+		},
+		json: true,
+		rejectUnauthorized: false,
+	  }) as { security?: { token?: string } };
+
+	  const token = auth.security?.token;
+	  if (!token) {
+		throw new NodeOperationError(this.getNode(), 'Cannot authenticate to Centreon');
+	  }
+
+	  // 2) Pagination manuelle
+	  const limit = 100;
+	  let   page  = 1;
+	  const all: Array<{
+		host_name:           string;
+		service_id:          number;
+		service_description: string;
+	  }> = [];
+
+	  while (true) {
+		const resp = await this.helpers.request({
+		  method: 'GET',
+		  uri:    `${baseUrl}/api/${version}/monitoring/services`,
+		  headers:{
+			'Content-Type': 'application/json',
+			'X-AUTH-TOKEN': token,
+		  },
+		  qs: { page, limit },
+		  json: true,
+		  rejectUnauthorized: false,
+		}) as {
+		  result: Array<{
+			host_name:           string;
+			service_id:          number;
+			service_description: string;
+		  }>;
+		  meta?: { pagination: { total: number; page: number; limit: number } };
+		};
+
+		all.push(...resp.result);
+
+		const meta = resp.meta?.pagination;
+		if (!meta || meta.page * meta.limit >= meta.total) {
+		  break;
+		}
+		page++;
+	  }
+
+	  // 3) Retourne les options sous la forme "HostName – ServiceDescription"
+	  return all.map(item => ({
+		name:  `${item.host_name} – ${item.service_description}`,
+		value: item.service_id,
+	  }));
       },
     },
   };
@@ -386,21 +451,10 @@ export class Centreon implements INodeType {
       },
       // ---- SERVICE: ACK ----
 	{
-	  displayName: 'Host Name or ID',
-	  name: 'hostId',
-	  type: 'options',
-	  typeOptions: { loadOptionsMethod: 'getHosts' },
-	  default: '',
-	  displayOptions: {
-		show: { resource: ['service'], operation: ['ack'] },
-	  },
-	  description: 'Hôte parent du service. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-	},
-	{
 	  displayName: 'Service Name or ID',
 	  name: 'serviceId',
 	  type: 'options',
-	  typeOptions: { loadOptionsMethod: 'getServicesByHost' },
+	  typeOptions: { loadOptionsMethod: 'getServices' },
 	  default: '',
 	  displayOptions: {
 		show: { resource: ['service'], operation: ['ack'] },
