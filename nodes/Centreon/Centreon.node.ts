@@ -139,6 +139,15 @@ export class Centreon implements INodeType {
         description: 'Choose from the list, or specify IDs using an expression. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
       },
       {
+        displayName: 'Macros',
+        name: 'macros',
+        type: 'string',
+        default: '',
+        displayOptions: { show: { resource: ['host'], operation: ['add'] } },
+        description:
+         'Liste de macros séparées par “|”. Ex : TIMEOUT|60|JMXVALUE|5 => 2 macros',
+      },
+      {
         displayName: 'Hostgroups Names or IDs',
         name: 'hostgroups',
         type: 'multiOptions',
@@ -215,6 +224,15 @@ export class Centreon implements INodeType {
         displayOptions: { show: { resource: ['service'], operation: ['add'] } },
         description: 'Templates de service à appliquer. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
       },
+      {
+        displayName: 'Macros',
+        name: 'macros',
+        type: 'string',
+        default: '',
+        displayOptions: { show: { resource: ['service'], operation: ['add'] } },
+        description:
+         'Liste de macros séparées par “|”. Ex : WARNING|1|CRITICAL|2 => 2 macros',
+      },
       // ---- ADVANCED OPTIONS ----
       {
         displayName: 'Options Avancées',
@@ -271,9 +289,39 @@ export class Centreon implements INodeType {
           const monitoringServerId = this.getNodeParameter('monitoringServerId', i) as number;
           const templates          = this.getNodeParameter('templates', i, []) as number[];
           const hostgroups         = this.getNodeParameter('hostgroups', i, []) as number[];
+	  const macrosString = this.getNodeParameter('macros', i, '') as string;
+
+	  // 2) Parse et valide
+	  const macros: IDataObject[] = [];
+	  if (macrosString.trim() !== '') {
+	    const parts = macrosString.split('|');
+
+	  // s'il n'y a pas de pipe du tout -> une seule valeur => erreur
+	  if (parts.length === 1) {
+	    throw new NodeOperationError(
+	      this.getNode(),
+	      'Format des macros invalide : veuillez fournir au moins un couple KEY|VALUE.',
+	    );
+	  }
+	  // si nombre impair de segments -> clé/valeur manquants => erreur
+	  if (parts.length % 2 !== 0) {
+	    throw new NodeOperationError(
+	      this.getNode(),
+	      'Format des macros invalide : chaque clé doit avoir une valeur associée.',
+	    );
+	  }
+
+	  // on construit le tableau
+	  for (let j = 0; j < parts.length; j += 2) {
+	    macros.push({
+	      name:  parts[j],
+	      value: parts[j + 1],
+	      });
+	    }
+	  }
           responseData = await centreonRequest.call(
             this, creds, token, 'POST', '/configuration/hosts',
-            { name, alias: name, address, monitoring_server_id: monitoringServerId, templates, groups: hostgroups },
+            { name, alias: name, address, monitoring_server_id: monitoringServerId, templates, groups: hostgroups , macros},
             ignoreSsl, version,
           );
         }
@@ -307,7 +355,37 @@ export class Centreon implements INodeType {
           const desc      = this.getNodeParameter('description', i) as string;
           const hostId    = this.getNodeParameter('hostId', i) as number;
           const templates = this.getNodeParameter('servicetemplates', i, []) as number[];
-          const body: IDataObject = { name, description: desc, host_id: hostId, templates };
+	  const macrosString = this.getNodeParameter('macros', i, '') as string;
+
+          // 2) Parse et valide
+          const macros: IDataObject[] = [];
+          if (macrosString.trim() !== '') {
+            const parts = macrosString.split('|');
+
+          // s'il n'y a pas de pipe du tout -> une seule valeur => erreur
+          if (parts.length === 1) {
+            throw new NodeOperationError(
+              this.getNode(),
+              'Format des macros invalide : veuillez fournir au moins un couple KEY|VALUE.',
+            );
+          }
+          // si nombre impair de segments -> clé/valeur manquants => erreur
+          if (parts.length % 2 !== 0) {
+            throw new NodeOperationError(
+              this.getNode(),
+              'Format des macros invalide : chaque clé doit avoir une valeur associée.',
+            );
+          }
+
+          // on construit le tableau
+          for (let j = 0; j < parts.length; j += 2) {
+            macros.push({
+              name:  parts[j],
+              value: parts[j + 1],
+              });
+            }
+          }
+          const body: IDataObject = { name, description: desc, host_id: hostId, templates, macros };
           responseData = await centreonRequest.call(
             this, creds, token, 'POST', '/configuration/services', body, ignoreSsl, version,
           );
