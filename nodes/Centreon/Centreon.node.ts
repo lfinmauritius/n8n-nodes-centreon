@@ -35,68 +35,99 @@ export class Centreon implements INodeType {
         return fetchFromCentreon.call(this, '/configuration/services/templates');
       },
       async getServices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	  const creds   = (await this.getCredentials('centreonApi')) as ICentreonCreds;
-	  const version = this.getNodeParameter('version', 0) as string;
-	  const baseUrl = creds.baseUrl.replace(/\/+$/, '');
+  // 1) Récupère les credentials et la version
+  const creds = (await this.getCredentials('centreonApi')) as ICentreonCreds;
+  const version = this.getNodeParameter('version', 0) as string;
+  const baseUrl = creds.baseUrl.replace(/\/+$/, '');
 
-	  // 1) Authent
-	  const auth = await this.helpers.request({
-		method: 'POST',
-		uri:    `${baseUrl}/api/${version}/login`,
-		headers:{ 'Content-Type': 'application/json' },
-		body:   { security: { credentials: { login: creds.username, password: creds.password } } },
-		json: true,
-		rejectUnauthorized: false,
-	  }) as { security?: { token?: string } };
-	  const token = auth.security?.token;
-	  if (!token) {
-		throw new NodeOperationError(this.getNode(), 'Cannot authenticate to Centreon');
-	  }
-
-	  // 2) Pagination manuelle
-	  const limit = 100;
-	  let page    = 1;
-	  const all: Array<{
-		hosts: { id: number; name: string };
-		id: number;
-		display_name: string;
-	  }> = [];
-
-	  while (true) {
-		const resp = await this.helpers.request({
-		  method: 'GET',
-		  uri:    `${baseUrl}/api/${version}/monitoring/services`,
-		  headers:{
-			'Content-Type':  'application/json',
-			'X-AUTH-TOKEN':   token,
-		  },
-		  qs: { page, limit },
-		  json: true,
-		  rejectUnauthorized: false,
-		}) as {
-		  result: typeof all;
-		  meta?: { pagination: { total: number; page: number; limit: number } };
-		};
-
-		all.push(...resp.result);
-
-		const meta = resp.meta?.pagination;
-		if (!meta || meta.page * meta.limit >= meta.total) {
-		  break;
-		}
-		page++;
-	  }
-
-	  // 3) Construction des options dynamiques
-	  return all.map(item => {
-		const host = item.hosts; // objet hôte :contentReference[oaicite:0]{index=0}
-		return {
-		  name:  `${host.name} – ${item.display_name}`,
-		  value: JSON.stringify({ hostId: host.id, serviceId: item.id }),
-		};
-	  });
+  // 2) Authentification
+  let token: string;
+  try {
+    const authResp = await this.helpers.request({
+      method: 'POST',
+      uri:    `${baseUrl}/api/${version}/login`,
+      headers:{ 'Content-Type': 'application/json' },
+      body:   {
+        security: {
+          credentials: {
+            login:    creds.username,
+            password: creds.password,
+          },
+        },
       },
-    },
+      json: true,
+      rejectUnauthorized: false,
+    });
+    token = (authResp as any).security?.token;
+    if (!token) {
+      throw new Error('No token returned');
+    }
+  } catch (err: any) {
+    throw new NodeOperationError(
+      this.getNode(),
+      `Authentication to Centreon failed: ${err.message}`,
+    );
+  }
+
+  // 3) Pagination manuelle pour récupérer tous les services
+  const limit = 100;
+  let page = 1;
+  const allItems: Array<any> = [];
+
+  while (true) {
+    let resp: any;
+    try {
+      resp = await this.helpers.request({
+        method: 'GET',
+        uri:    `${baseUrl}/api/${version}/monitoring/services`,
+        headers:{
+          'Content-Type': 'application/json',
+          'X-AUTH-TOKEN':  token,
+        },
+        qs: { page, limit },
+        json: true,
+        rejectUnauthorized: false,
+      });
+    } catch (err: any) {
+      throw new NodeOperationError(
+        this.getNode(),
+        `Error fetching services page ${page}: ${err.message}`,
+      );
+    }
+
+    if (!Array.isArray(resp.result)) {
+      throw new NodeOperationError(
+        this.getNode(),
+        'Unexpected response format when fetching services',
+      );
+    }
+
+    allItems.push(...resp.result);
+
+    const meta = resp.meta?.pagination;
+    if (!meta || meta.page * meta.limit >= meta.total) {
+      break;
+    }
+    page++;
+  }
+
+  // 4) Transformation en options dynamiques
+  return allItems.map((item: any) => {
+    // tente hosts, sinon fallback sur host_id / host_name
+    const hostObj   = item.hosts;
+    const hostId    = hostObj?.id   ?? item.host_id   ?? null;
+    const hostName  = hostObj?.name ?? item.host_name ?? 'Unknown Host';
+    const serviceId = item.id;
+    const serviceName =
+      item.display_name ?? item.description ?? `Service ${serviceId}`;
+
+    return {
+      name:  `${hostName} – ${serviceName}`,
+      value: JSON.stringify({ hostId, serviceId }),
+    };
+  });
+}
+    } 
   };
 
   description: INodeTypeDescription = {
@@ -658,7 +689,7 @@ export class Centreon implements INodeType {
 	  	// 1) Récupère et parse le JSON
 	const serviceJson = this.getNodeParameter('service', i) as string;
 	const { hostId, serviceId } = JSON.parse(serviceJson) as {
-	  hostId: number;
+	  hostId: number | null;
 	  serviceId: number;
 	};
 
