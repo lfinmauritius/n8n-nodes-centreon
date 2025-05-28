@@ -125,7 +125,6 @@ export class Centreon implements INodeType {
         displayName: 'Monitoring Server Name or ID',
         name: 'monitoringServerId',
         type: 'options',
-        typeOptions: { loadOptionsMethod: 'getMonitoringServers' },
         required: true,
         default: '',
         displayOptions: {
