@@ -15,7 +15,7 @@ export class Centreon implements INodeType {
   /**
    * n8n dynamic option methods
    */
-  public methods = {
+   methods = {
     loadOptions: {
       /**
        * Fetch Centreon monitoring servers for dropdown
@@ -205,42 +205,6 @@ export class Centreon implements INodeType {
     const executionData = returnData.map((d) => ({ json: d })) as INodeExecutionData[];
     return this.prepareOutputData(executionData);
   }
-
-  /**
-   * LOAD OPTIONS: monitoring servers
-   */
-  async getMonitoringServers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-    const creds = (await this.getCredentials('centreonApi')) as ICentreonCreds;
-    const version = this.getNodeParameter('version', 0) as string;
-    const baseUrl = creds.baseUrl.replace(/\/+$/, '');
-
-    // Authenticate
-    const authResp = (await this.helpers.request({
-      method: 'POST',
-      uri: `${baseUrl}/api/${version}/login`,
-      headers: { 'Content-Type': 'application/json' },
-      body: { security: { credentials: { login: creds.username, password: creds.password } } },
-      json: true,
-      rejectUnauthorized: false,
-    } as any)) as { security?: { token?: string } };
-
-    const token = authResp.security?.token;
-    if (!token) throw new NodeOperationError(this.getNode(), 'Cannot authenticate to Centreon');
-
-    // Fetch servers
-    const serverResp = (await this.helpers.request({
-      method: 'GET',
-      uri: `${baseUrl}/api/${version}/configuration/monitoring-servers`,
-      headers: { 'Content-Type': 'application/json', 'X-AUTH-TOKEN': token },
-      json: true,
-      rejectUnauthorized: false,
-    } as any)) as { result?: Array<{ id: number; name: string }> };
-
-    const servers = serverResp.result;
-    if (!servers) throw new NodeOperationError(this.getNode(), 'Invalid response from Centreon');
-
-    return servers.map((s) => ({ name: s.name, value: s.id }));
-  }
 }
 
 /** Helper: auth */
@@ -252,7 +216,7 @@ async function getAuthToken(
 ): Promise<string> {
   const resp = (await this.helpers.request({
     method: 'POST',
-    uri: `${creds.baseUrl.replace(/\/+$/, '')}/api/${version}/login`,
+    uri: `${creds.baseUrl.replace(/\/\+$/, '')}/api/${version}/login`,
     headers: { 'Content-Type': 'application/json' },
     body: { security: { credentials: { login: creds.username, password: creds.password } } },
     json: true,
@@ -276,7 +240,7 @@ async function centreonRequest(
 ): Promise<any> {
   return this.helpers.request({
     method,
-    uri: `${creds.baseUrl.replace(/\/+$/, '')}/api/${version}${endpoint}`,
+    uri: `${creds.baseUrl.replace(/\/\+$/, '')}/api/${version}${endpoint}`,
     headers: {
       'Content-Type': 'application/json',
       'X-AUTH-TOKEN': token,
