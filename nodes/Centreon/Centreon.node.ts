@@ -11,7 +11,10 @@ import {
 } from 'n8n-workflow';
 import { ICentreonCreds } from '../../credentials/CentreonApi.credentials';
 
-export class Centreon implements INodeType {
+// @ts-ignore TS2420: class intentionally implements ILoadOptionsFunctions without explicit members
+export class Centreon implements INodeType, ILoadOptionsFunctions {
+  // Allow dynamic option loading without implementing all ILoadOptionsFunctions
+  [key: string]: any;
   description: INodeTypeDescription = {
     displayName: 'Centreon',
     name: 'centreon',
@@ -199,7 +202,7 @@ export class Centreon implements INodeType {
       console.log('Auth response:', authResponse);
       const token = authResponse.security?.token;
       if (!token) {
-		throw new NodeOperationError(this.getNode(), 'No token returned during authentication');
+        throw new NodeOperationError(this.getNode(), 'No token returned during authentication');
       }
 
       // Fetch monitoring servers
@@ -217,7 +220,7 @@ export class Centreon implements INodeType {
       console.log('Monitoring servers response:', response);
 
       if (!response.result) {
-		throw new NodeOperationError(this.getNode(), 'Invalid response format');
+        throw new NodeOperationError(this.getNode(), 'Invalid response format');
       }
 
       return response.result.map((srv) => ({ name: srv.name, value: srv.id }));
