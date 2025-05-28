@@ -39,34 +39,25 @@ export class Centreon implements INodeType {
 	  const version = this.getNodeParameter('version', 0) as string;
 	  const baseUrl = creds.baseUrl.replace(/\/+$/, '');
 
-	  // 1) Authentification
+	  // Auth
 	  const auth = await this.helpers.request({
 		method: 'POST',
 		uri:    `${baseUrl}/api/${version}/login`,
 		headers:{ 'Content-Type': 'application/json' },
-		body:   {
-		  security: {
-			credentials: {
-			  login:    creds.username,
-			  password: creds.password,
-			},
-		  },
-		},
+		body:   { security: { credentials: { login: creds.username, password: creds.password } } },
 		json: true,
 		rejectUnauthorized: false,
 	  }) as { security?: { token?: string } };
-
 	  const token = auth.security?.token;
-	  if (!token) {
-		throw new NodeOperationError(this.getNode(), 'Cannot authenticate to Centreon');
-	  }
+	  if (!token) throw new NodeOperationError(this.getNode(), 'Cannot authenticate to Centreon');
 
-	  // 2) Pagination manuelle
+	  // Pagination manuelle
 	  const limit = 100;
-	  let   page  = 1;
+	  let page    = 1;
 	  const all: Array<{
-		host_name:           string;
-		service_id:          number;
+		host_id:           number;
+		host_name:         string;
+		service_id:        number;
 		service_description: string;
 	  }> = [];
 
@@ -82,27 +73,20 @@ export class Centreon implements INodeType {
 		  json: true,
 		  rejectUnauthorized: false,
 		}) as {
-		  result: Array<{
-			host_name:           string;
-			service_id:          number;
-			service_description: string;
-		  }>;
+		  result: typeof all;
 		  meta?: { pagination: { total: number; page: number; limit: number } };
 		};
 
 		all.push(...resp.result);
-
 		const meta = resp.meta?.pagination;
-		if (!meta || meta.page * meta.limit >= meta.total) {
-		  break;
-		}
+		if (!meta || meta.page * meta.limit >= meta.total) break;
 		page++;
 	  }
 
-	  // 3) Retourne les options sous la forme "HostName – ServiceDescription"
+	  // Retourne "HostName – ServiceDescription" et un value JSON
 	  return all.map(item => ({
 		name:  `${item.host_name} – ${item.service_description}`,
-		value: item.service_id,
+		value: JSON.stringify({ hostId: item.host_id, serviceId: item.service_id }),
 	  }));
       },
     },
@@ -451,8 +435,8 @@ export class Centreon implements INodeType {
       },
       // ---- SERVICE: ACK ----
 	{
-	  displayName: 'Service Name or ID',
-	  name: 'serviceId',
+	  displayName: 'Service Name',
+	  name: 'service',
 	  type: 'options',
 	  typeOptions: { loadOptionsMethod: 'getServices' },
 	  default: '',
@@ -664,30 +648,33 @@ export class Centreon implements INodeType {
             this, creds, token, 'POST', '/configuration/services', body, ignoreSsl, version,
           );
         } else if (operation === 'ack') {
-          const hostId     = this.getNodeParameter('hostId',     i) as number;
-	  const serviceId  = this.getNodeParameter('serviceId',  i) as number;
-	  const comment    = this.getNodeParameter('comment',    i) as string;
-	  const notify     = this.getNodeParameter('notify',     i) as boolean;
-	  const sticky     = this.getNodeParameter('sticky',     i) as boolean;
-	  const persistent = this.getNodeParameter('persistent', i) as boolean;
+	  	// 1) Récupère et parse le JSON
+	const serviceJson = this.getNodeParameter('service', i) as string;
+	let { hostId, serviceId } = JSON.parse(serviceJson) as {
+	  hostId: number;
+	  serviceId: number;
+	};
 
-	  const body: IDataObject = {
-		comment,
-		notify,
-		sticky,
-		persistent,
-	  };
+	// 2) Les autres paramètres
+	const comment    = this.getNodeParameter('comment',    i) as string;
+	const notify     = this.getNodeParameter('notify',     i) as boolean;
+	const sticky     = this.getNodeParameter('sticky',     i) as boolean;
+	const persistent = this.getNodeParameter('persistent', i) as boolean;
 
-	  responseData = await centreonRequest.call(
-		this,
-		creds,
-		token,
-		'POST',
-		`/monitoring/hosts/${hostId}/services/${serviceId}/acknowledgements`,
-		body,
-		ignoreSsl,
-		version,
-	  );
+	// 3) Build body
+	const body: IDataObject = { comment, notify, sticky, persistent };
+
+	// 4) Appel de l’API
+	responseData = await centreonRequest.call(
+	  this,
+	  creds,
+	  token,
+	  'POST',
+	  `/monitoring/hosts/${hostId}/services/${serviceId}/acknowledgements`,
+	  body,
+	  ignoreSsl,
+	  version,
+	);
         }
       }
 
