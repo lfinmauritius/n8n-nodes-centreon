@@ -243,15 +243,6 @@ export class Centreon implements INodeType {
         description: 'Nom du service à créer',
       },
       {
-        displayName: 'Description',
-        name: 'description',
-        type: 'string',
-        default: '',
-        required: true,
-        displayOptions: { show: { resource: ['service'], operation: ['add'] } },
-        description: 'Description du service',
-      },
-      {
         displayName: 'Host Name or ID',
         name: 'hostId',
         type: 'options',
@@ -434,7 +425,6 @@ export class Centreon implements INodeType {
           );
         } else if (operation === 'add') {
           const name      = this.getNodeParameter('servicename', i) as string;
-          const desc      = this.getNodeParameter('description', i) as string;
           const hostId    = this.getNodeParameter('hostId', i) as number;
           const templates = this.getNodeParameter('servicetemplates', i, []) as number[];
 	  const macroItems = this.getNodeParameter(
@@ -454,10 +444,10 @@ export class Centreon implements INodeType {
             name:        m.name,
             value:       m.value,
             is_password: m.isPassword,
-            description: m.description,  // toujours présent, même vide
+            description: m.description,
           } as IDataObject;
         });
-          const body: IDataObject = { name, description: desc, host_id: hostId, templates, macros };
+          const body: IDataObject = { name, host_id: hostId, service_template_id: templates, macros };
           responseData = await centreonRequest.call(
             this, creds, token, 'POST', '/configuration/services', body, ignoreSsl, version,
           );
