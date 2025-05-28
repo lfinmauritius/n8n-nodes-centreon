@@ -435,7 +435,7 @@ export class Centreon implements INodeType {
       },
       // ---- SERVICE: ACK ----
 	{
-	  displayName: 'Service Name',
+	  displayName: 'Service Name or ID',
 	  name: 'service',
 	  type: 'options',
 	  typeOptions: { loadOptionsMethod: 'getServices' },
