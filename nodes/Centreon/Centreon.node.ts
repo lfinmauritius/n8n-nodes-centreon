@@ -185,14 +185,14 @@ export class Centreon implements INodeType {
         description: 'Description du service',
       },
       {
-        displayName: 'Host',
+        displayName: 'Host Name or ID',
         name: 'hostId',
         type: 'options',
         default: '',
         typeOptions: { loadOptionsMethod: 'getHosts' },
         required: true,
         displayOptions: { show: { resource: ['service'], operation: ['add'] } },
-        description: 'Hôte associé au service',
+        description: 'Hôte associé au service. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
       },
       {
         displayName: 'Template(s) Names or IDs',
