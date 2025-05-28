@@ -83,7 +83,7 @@ export class Centreon implements INodeType {
         description: 'Adresse IP de l’hôte',
       },
       {
-        displayName: 'Monitoring Server',
+        displayName: 'Monitoring Server Name or ID',
         name: 'monitoringServerId',
         type: 'options',
         typeOptions: {
@@ -94,7 +94,7 @@ export class Centreon implements INodeType {
         displayOptions: {
           show: { resource: ['host'], operation: ['add'] },
         },
-        description: 'Monitoring server to assign host to',
+        description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
       },
       {
         displayName: 'Options Avancées',
