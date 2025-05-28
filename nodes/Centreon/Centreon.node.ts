@@ -194,7 +194,7 @@ export class Centreon implements INodeType {
             token,
             'POST',
             '/configuration/hosts',
-            { name, alias: name, address, monitoringServerId },
+            { name, alias: name, address, monitoring_server_id: monitoringServerId },
             ignoreSsl,
             version,
           );
