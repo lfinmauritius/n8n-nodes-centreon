@@ -172,30 +172,60 @@ export class Centreon implements INodeType {
   /**
    * Load options to get available monitoring servers
    */
-
   async getMonitoringServers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-    try {
-      const credentialsData = await this.getCredentials('centreonApi');
-      const creds = credentialsData as unknown as ICentreonCreds;
-      const version = this.getNodeParameter('version', 0) as string;
-      const ignoreSsl = false;
+    // Load credentials
+    const credentialsData = await this.getCredentials('centreonApi');
+    const creds = credentialsData as unknown as ICentreonCreds;
+    const version = this.getNodeParameter('version', 0) as string;
+    // Ensure baseUrl has no trailing slash
+    const baseUrl = creds.baseUrl.replace(/\/+$/, '');
+    // Debug: Loading monitoring servers URL
+      console.log(`Loading monitoring servers from ${baseUrl}/api/${version}/configuration/monitoring-servers`);
 
-      // Authenticate
-      const token = await getAuthToken.call(this as unknown as IExecuteFunctions, creds, ignoreSsl, version);
+    try {
+      // Authenticate inline
+      const authOptions = {
+        method: 'POST',
+        uri: `${baseUrl}/api/${version}/login`,
+        headers: { 'Content-Type': 'application/json' },
+        body: { security: { credentials: { login: creds.username, password: creds.password } } },
+        json: true,
+        rejectUnauthorized: false,
+      };
+      // Debug: Auth request options
+      console.log('Auth request options:', authOptions);
+      const authResponse = await this.helpers.request(authOptions as any) as { security?: { token?: string } };
+      // Debug: Auth response
+      console.log('Auth response:', authResponse);
+      const token = authResponse.security?.token;
+      if (!token) {
+        throw new Error('No token returned during authentication');
+      }
 
       // Fetch monitoring servers
-      const response = (await this.helpers.request({
+      const serverOptions = {
         method: 'GET',
-        uri: `${creds.baseUrl}/api/${version}/configuration/monitoring-servers`,
+        uri: `${baseUrl}/api/${version}/configuration/monitoring-servers`,
         headers: { 'Content-Type': 'application/json', 'X-AUTH-TOKEN': token },
         json: true,
-        rejectUnauthorized: !ignoreSsl,
-      } as any)) as { result: Array<{ id: number; name: string }> };
+        rejectUnauthorized: false,
+      };
+      // Debug: Monitoring servers request options
+      console.log('Monitoring servers request options:', serverOptions);
+      const response = await this.helpers.request(serverOptions as any) as { result?: Array<{ id: number; name: string }> };
+      // Debug: Monitoring servers response
+      console.log('Monitoring servers response:', response);
 
-      const servers = response.result;
-      return servers.map((srv) => ({ name: srv.name, value: srv.id }));
+      if (!response.result) {
+        throw new Error('Invalid response format');
+      }
+
+      return response.result.map((srv) => ({ name: srv.name, value: srv.id }));
     } catch (error) {
-      throw new NodeOperationError(this.getNode(), `Error fetching options from Centreon: ${error.message}`);
+      // Debug: Error in getMonitoringServers
+      console.error('Error in getMonitoringServers:', error);
+      // Rethrow as NodeOperationError for UI
+      throw new NodeOperationError(this.getNode(), `Error fetching options from Centreon: ${(error as Error).message}`);
     }
   }
 }
