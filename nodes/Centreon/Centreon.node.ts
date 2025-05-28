@@ -165,6 +165,18 @@ export class Centreon implements INodeType {
         displayOptions: { show: { resource: ['service'], operation: ['list'] } },
         description: 'Max number of results to return',
       },
+      {
+    	displayName: 'Host Name or ID',
+	name: 'hostId',
+	type: 'options',
+    	typeOptions: { loadOptionsMethod: 'getHosts' },
+    	default: '',
+    	displayOptions: {
+     	 	show: { resource: ['service'], operation: ['list'] },
+    	},
+    	description:
+      		'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+      },
       // ---- SERVICE: ADD ----
       {
         displayName: 'Service Name',
@@ -269,12 +281,20 @@ export class Centreon implements INodeType {
       else if (resource === 'service') {
         if (operation === 'list') {
           const filterName = this.getNodeParameter('filterName', i, '') as string;
+	  const hostId     = this.getNodeParameter('hostId', i, '') as number;
           const limit      = this.getNodeParameter('limit', i, 50) as number;
-          const params: string[] = [];
-          if (filterName) {
-            const searchObj = { $and: [{ 'service.name': { $lk: filterName } }] };
-            params.push(`search=${encodeURIComponent(JSON.stringify(searchObj))}`);
-          }
+	  const params: string[] = [];
+	  const and: IDataObject[] = [];
+	  if (filterName) {
+   	     and.push({ 'service.name': { $lk: filterName } });
+	  }
+	  if (hostId) {
+	     and.push({ 'host.id': { $eq: hostId } });
+	  }
+	  if (and.length) {
+	    const searchObj = { $and: and };
+	    params.push(`search=${encodeURIComponent(JSON.stringify(searchObj))}`);
+	  }
           if (limit) {
             params.push(`limit=${limit}`);
           }
