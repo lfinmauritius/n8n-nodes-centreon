@@ -144,8 +144,7 @@ export class Centreon implements INodeType {
         type: 'string',
         default: '',
         displayOptions: { show: { resource: ['host'], operation: ['add'] } },
-        description:
-         'Liste de macros séparées par “|”. Ex : TIMEOUT|60|JMXVALUE|5 => 2 macros',
+        description: 'Liste de macros séparées par “|”. Ex : TIMEOUT|60|JMXVALUE|5 => 2 macros.',
       },
       {
         displayName: 'Hostgroups Names or IDs',
@@ -230,8 +229,7 @@ export class Centreon implements INodeType {
         type: 'string',
         default: '',
         displayOptions: { show: { resource: ['service'], operation: ['add'] } },
-        description:
-         'Liste de macros séparées par “|”. Ex : WARNING|1|CRITICAL|2 => 2 macros',
+        description: 'Liste de macros séparées par “|”. Ex : WARNING|1|CRITICAL|2 => 2 macros.',
       },
       // ---- ADVANCED OPTIONS ----
       {
