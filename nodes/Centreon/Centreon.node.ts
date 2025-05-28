@@ -153,7 +153,7 @@ export class Centreon implements INodeType {
 	      operation: ['add'],
 	    },
 	  },
-	  description: 'Define one or more macros for this resource.',
+	  description: 'Define one or more macros for this resource',
 	  options: [
 	    {
 	      displayName: 'Macro',
@@ -285,7 +285,7 @@ export class Centreon implements INodeType {
               operation: ['add'],
             },
           },
-          description: 'Define one or more macros for this resource.',
+          description: 'Define one or more macros for this resource',
           options: [
             {
               displayName: 'Macro',
