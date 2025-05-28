@@ -591,10 +591,10 @@ export class Centreon implements INodeType {
 
 	  const body: IDataObject = {
 		comment,
-		notify,
-		sticky,
-		persistent,
-		acknowledge_services: ackServices,
+		is_notify_contacts: notify,
+		is_sticky: sticky,
+		is_persistent_comment: persistent,
+		with_services: ackServices,
 	  };
 
 	  responseData = await centreonRequest.call(
