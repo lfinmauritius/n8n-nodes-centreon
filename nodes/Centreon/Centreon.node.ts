@@ -12,12 +12,9 @@ import {
 import { ICentreonCreds } from '../../credentials/CentreonApi.credentials';
 
 export class Centreon implements INodeType {
-  /**
-   * n8n dynamic option methods
-   */
-   methods = {
+  methods = {
     loadOptions: {
-	/** Monitoring servers */
+      /** Monitoring servers */
       async getMonitoringServers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
         return fetchFromCentreon.call(this, '/configuration/monitoring-servers');
       },
@@ -25,9 +22,17 @@ export class Centreon implements INodeType {
       async getHostTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
         return fetchFromCentreon.call(this, '/configuration/hosts/templates');
       },
-      /** Host groupss */
+      /** Host groups */
       async getHostGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
         return fetchFromCentreon.call(this, '/configuration/hosts/groups');
+      },
+      /** Hosts (for services) */
+      async getHosts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+        return fetchFromCentreon.call(this, '/configuration/hosts');
+      },
+      /** Service templates */
+      async getServiceTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+        return fetchFromCentreon.call(this, '/configuration/services/templates');
       },
     },
   };
@@ -57,7 +62,10 @@ export class Centreon implements INodeType {
         name: 'resource',
         type: 'options',
         noDataExpression: true,
-        options: [{ name: 'Host', value: 'host' }],
+        options: [
+          { name: 'Host', value: 'host' },
+          { name: 'Service', value: 'service' },
+        ],
         default: 'host',
         description: 'Type de ressource Centreon',
       },
@@ -73,8 +81,9 @@ export class Centreon implements INodeType {
         default: 'list',
         description: 'Opération à réaliser',
       },
+      // ---- HOST: LIST ----
       {
-        displayName: 'Host Name (Regex)',
+        displayName: 'Host Name (Like format)',
         name: 'filterName',
         type: 'string',
         default: '',
@@ -85,20 +94,19 @@ export class Centreon implements INodeType {
         displayName: 'Limit',
         name: 'limit',
         type: 'number',
-	typeOptions: { minValue: 1 },
         default: 50,
+        typeOptions: { minValue: 1 },
         displayOptions: { show: { resource: ['host'], operation: ['list'] } },
         description: 'Max number of results to return',
       },
+      // ---- HOST: ADD ----
       {
         displayName: 'Name',
         name: 'name',
         type: 'string',
         default: '',
         required: true,
-        displayOptions: {
-          show: { resource: ['host'], operation: ['add'] },
-        },
+        displayOptions: { show: { resource: ['host'], operation: ['add'] } },
         description: 'Nom de l’hôte à créer',
       },
       {
@@ -107,9 +115,7 @@ export class Centreon implements INodeType {
         type: 'string',
         default: '',
         required: true,
-        displayOptions: {
-          show: { resource: ['host'], operation: ['add'] },
-        },
+        displayOptions: { show: { resource: ['host'], operation: ['add'] } },
         description: 'Adresse IP de l’hôte',
       },
       {
@@ -117,14 +123,10 @@ export class Centreon implements INodeType {
         name: 'monitoringServerId',
         type: 'options',
         required: true,
-        typeOptions: {
-	  loadOptionsMethod: 'getMonitoringServers', 
-	},
+        typeOptions: { loadOptionsMethod: 'getMonitoringServers' },
         default: '',
-        displayOptions: {
-          show: { resource: ['host'], operation: ['add'] },
-        },
-        description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+        displayOptions: { show: { resource: ['host'], operation: ['add'] } },
+        description: 'Choose from the list, or specify an ID using an expression',
       },
       {
         displayName: 'Templates Names or IDs',
@@ -134,7 +136,7 @@ export class Centreon implements INodeType {
         required: true,
         default: [],
         displayOptions: { show: { resource: ['host'], operation: ['add'] } },
-        description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+        description: 'Choose from the list, or specify IDs using an expression',
       },
       {
         displayName: 'Hostgroups Names or IDs',
@@ -143,8 +145,65 @@ export class Centreon implements INodeType {
         typeOptions: { loadOptionsMethod: 'getHostGroups' },
         default: [],
         displayOptions: { show: { resource: ['host'], operation: ['add'] } },
-        description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+        description: 'Choose from the list, or specify IDs using an expression',
       },
+      // ---- SERVICE: LIST ----
+      {
+        displayName: 'Service Name (Like format)',
+        name: 'filterName',
+        type: 'string',
+        default: '',
+        displayOptions: { show: { resource: ['service'], operation: ['list'] } },
+        description: 'Regex to filter services by name',
+      },
+      {
+        displayName: 'Limit',
+        name: 'limit',
+        type: 'number',
+        default: 50,
+        typeOptions: { minValue: 1 },
+        displayOptions: { show: { resource: ['service'], operation: ['list'] } },
+        description: 'Max number of results to return',
+      },
+      // ---- SERVICE: ADD ----
+      {
+        displayName: 'Service Name',
+        name: 'name',
+        type: 'string',
+        default: '',
+        required: true,
+        displayOptions: { show: { resource: ['service'], operation: ['add'] } },
+        description: 'Nom du service à créer',
+      },
+      {
+        displayName: 'Description',
+        name: 'description',
+        type: 'string',
+        default: '',
+        required: true,
+        displayOptions: { show: { resource: ['service'], operation: ['add'] } },
+        description: 'Description du service',
+      },
+      {
+        displayName: 'Host',
+        name: 'hostId',
+        type: 'options',
+        typeOptions: { loadOptionsMethod: 'getHosts' },
+        required: true,
+	default: '',
+        displayOptions: { show: { resource: ['service'], operation: ['add'] } },
+        description: 'Hôte associé au service',
+      },
+      {
+        displayName: 'Template(s)',
+        name: 'templates',
+        type: 'multiOptions',
+        typeOptions: { loadOptionsMethod: 'getServiceTemplates' },
+        default: [],
+        displayOptions: { show: { resource: ['service'], operation: ['add'] } },
+        description: 'Templates de service à appliquer',
+      },
+      // ---- ADVANCED OPTIONS ----
       {
         displayName: 'Options Avancées',
         name: 'advancedOptions',
@@ -164,82 +223,80 @@ export class Centreon implements INodeType {
     ],
   };
 
-  /**
-   * MAIN EXECUTION
-   */
   async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
     const creds = (await this.getCredentials('centreonApi')) as ICentreonCreds;
     const version = this.getNodeParameter('version', 0) as string;
     const ignoreSsl = this.getNodeParameter('advancedOptions.ignoreSsl', 0, false) as boolean;
-
     const token = await getAuthToken.call(this, creds, ignoreSsl, version);
 
     const items = this.getInputData();
     const returnData: IDataObject[] = [];
 
     for (let i = 0; i < items.length; i++) {
-      const resource = this.getNodeParameter('resource', i) as string;
+      const resource  = this.getNodeParameter('resource', i) as string;
       const operation = this.getNodeParameter('operation', i) as string;
       let responseData: any;
 
       if (resource === 'host') {
         if (operation === 'list') {
-	    // 1. Récupérer les paramètres
-	  const filterName = this.getNodeParameter('filterName', i, '') as string;
-	  const limit = this.getNodeParameter('limit', i, 10) as number;
-
-	  // 2. Construire le ou les paramètres de requête
-	  const params: string[] = [];
-
-	  if (filterName) {
-	    // Format “search” avec $and et opérateur $lk (like)
-	    const searchObj = {
-	      $and: [
-	        { 'host.name': { $lk: filterName } },
-	      ],
-	    };
-	    params.push(`search=${encodeURIComponent(JSON.stringify(searchObj))}`);
-	  }
-
-	  if (limit) {
-	    params.push(`limit=${limit}`);
-	  }
-
-	  const queryString = params.length
-	    ? `?${params.join('&')}`
-	    : '';
-
-	  // 3. Appel API
-	  responseData = await centreonRequest.call(
-	    this,
-	    creds,
-	    token,
-	    'GET',
-	    `/monitoring/hosts${queryString}`,
-	    {},
-	    ignoreSsl,
-	    version,
-  		);
-        } else if (operation === 'add') {
-          const name = this.getNodeParameter('name', i) as string;
-          const address = this.getNodeParameter('address', i) as string;
-          const monitoringServerId = this.getNodeParameter('monitoringServerId', i) as number;
-	  const templates = this.getNodeParameter('templates', i, []) as number[];
-          const hostgroups = this.getNodeParameter('hostgroups', i, []) as number[];
+          const filterName = this.getNodeParameter('filterName', i, '') as string;
+          const limit      = this.getNodeParameter('limit', i, 50) as number;
+          const params: string[] = [];
+          if (filterName) {
+            const searchObj = { $and: [{ 'host.name': { $lk: filterName } }] };
+            params.push(`search=${encodeURIComponent(JSON.stringify(searchObj))}`);
+          }
+          if (limit) {
+            params.push(`limit=${limit}`);
+          }
+          const qs = params.length ? `?${params.join('&')}` : '';
           responseData = await centreonRequest.call(
-            this,
-            creds,
-            token,
-            'POST',
-            '/configuration/hosts',
+            this, creds, token, 'GET', `/monitoring/hosts${qs}`, {}, ignoreSsl, version,
+          );
+        } else if (operation === 'add') {
+          const name               = this.getNodeParameter('name', i) as string;
+          const address            = this.getNodeParameter('address', i) as string;
+          const monitoringServerId = this.getNodeParameter('monitoringServerId', i) as number;
+          const templates          = this.getNodeParameter('templates', i, []) as number[];
+          const hostgroups         = this.getNodeParameter('hostgroups', i, []) as number[];
+          responseData = await centreonRequest.call(
+            this, creds, token, 'POST', '/configuration/hosts',
             { name, alias: name, address, monitoring_server_id: monitoringServerId, templates, groups: hostgroups },
-            ignoreSsl,
-            version,
+            ignoreSsl, version,
+          );
+        }
+      }
+      else if (resource === 'service') {
+        if (operation === 'list') {
+          const filterName = this.getNodeParameter('filterName', i, '') as string;
+          const limit      = this.getNodeParameter('limit', i, 50) as number;
+          const params: string[] = [];
+          if (filterName) {
+            const searchObj = { $and: [{ 'service.name': { $lk: filterName } }] };
+            params.push(`search=${encodeURIComponent(JSON.stringify(searchObj))}`);
+          }
+          if (limit) {
+            params.push(`limit=${limit}`);
+          }
+          const qs = params.length ? `?${params.join('&')}` : '';
+          responseData = await centreonRequest.call(
+            this, creds, token, 'GET', `/monitoring/services${qs}`, {}, ignoreSsl, version,
+          );
+        } else if (operation === 'add') {
+          const name      = this.getNodeParameter('name', i) as string;
+          const desc      = this.getNodeParameter('description', i) as string;
+          const hostId    = this.getNodeParameter('hostId', i) as number;
+          const templates = this.getNodeParameter('templates', i, []) as number[];
+          const body: IDataObject = { name, description: desc, host_id: hostId, templates };
+          responseData = await centreonRequest.call(
+            this, creds, token, 'POST', '/configuration/services', body, ignoreSsl, version,
           );
         }
       }
 
-      if (responseData !== undefined) returnData.push(responseData as IDataObject);
+      if (responseData !== undefined) {
+        returnData.push(responseData as IDataObject);
+      }
     }
 
     const executionData = returnData.map((d) => ({ json: d })) as INodeExecutionData[];
@@ -247,16 +304,16 @@ export class Centreon implements INodeType {
   }
 }
 
-/** Helper: auth */
+
+/** Helper: auth + generic request */
 async function fetchFromCentreon(
   this: ILoadOptionsFunctions,
   endpoint: string,
 ): Promise<INodePropertyOptions[]> {
-  const creds = (await this.getCredentials('centreonApi')) as ICentreonCreds;
+  const creds   = (await this.getCredentials('centreonApi')) as ICentreonCreds;
   const version = this.getNodeParameter('version', 0) as string;
   const baseUrl = creds.baseUrl.replace(/\/+$/, '');
 
-  // auth
   const authResp = (await this.helpers.request({
     method: 'POST',
     uri: `${baseUrl}/api/${version}/login`,
@@ -302,7 +359,6 @@ async function getAuthToken(
   return resp.security.token;
 }
 
-/** Helper: generic request */
 async function centreonRequest(
   this: IExecuteFunctions,
   creds: ICentreonCreds,
@@ -316,10 +372,7 @@ async function centreonRequest(
   return this.helpers.request({
     method,
     uri: `${creds.baseUrl.replace(/\/+$/, '')}/api/${version}${endpoint}`,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-AUTH-TOKEN': token,
-    },
+    headers: { 'Content-Type': 'application/json', 'X-AUTH-TOKEN': token },
     body,
     json: true,
     rejectUnauthorized: !ignoreSsl,
