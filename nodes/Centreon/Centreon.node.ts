@@ -35,11 +35,11 @@ export class Centreon implements INodeType {
         return fetchFromCentreon.call(this, '/configuration/services/templates');
       },
       async getServices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-		  const creds   = (await this.getCredentials('centreonApi')) as ICentreonCreds;
+	  const creds   = (await this.getCredentials('centreonApi')) as ICentreonCreds;
 	  const version = this.getNodeParameter('version', 0) as string;
 	  const baseUrl = creds.baseUrl.replace(/\/+$/, '');
 
-	  // Auth
+	  // 1) Authent
 	  const auth = await this.helpers.request({
 		method: 'POST',
 		uri:    `${baseUrl}/api/${version}/login`,
@@ -49,16 +49,17 @@ export class Centreon implements INodeType {
 		rejectUnauthorized: false,
 	  }) as { security?: { token?: string } };
 	  const token = auth.security?.token;
-	  if (!token) throw new NodeOperationError(this.getNode(), 'Cannot authenticate to Centreon');
+	  if (!token) {
+		throw new NodeOperationError(this.getNode(), 'Cannot authenticate to Centreon');
+	  }
 
-	  // Pagination manuelle
+	  // 2) Pagination manuelle
 	  const limit = 100;
 	  let page    = 1;
 	  const all: Array<{
-		host_id:           number;
-		host_name:         string;
-		service_id:        number;
-		service_description: string;
+		hosts: { id: number; name: string };
+		id: number;
+		display_name: string;
 	  }> = [];
 
 	  while (true) {
@@ -66,8 +67,8 @@ export class Centreon implements INodeType {
 		  method: 'GET',
 		  uri:    `${baseUrl}/api/${version}/monitoring/services`,
 		  headers:{
-			'Content-Type': 'application/json',
-			'X-AUTH-TOKEN': token,
+			'Content-Type':  'application/json',
+			'X-AUTH-TOKEN':   token,
 		  },
 		  qs: { page, limit },
 		  json: true,
@@ -78,16 +79,22 @@ export class Centreon implements INodeType {
 		};
 
 		all.push(...resp.result);
+
 		const meta = resp.meta?.pagination;
-		if (!meta || meta.page * meta.limit >= meta.total) break;
+		if (!meta || meta.page * meta.limit >= meta.total) {
+		  break;
+		}
 		page++;
 	  }
 
-	  // Retourne "HostName – ServiceDescription" et un value JSON
-	  return all.map(item => ({
-		name:  `${item.host_name} – ${item.service_description}`,
-		value: JSON.stringify({ hostId: item.host_id, serviceId: item.service_id }),
-	  }));
+	  // 3) Construction des options dynamiques
+	  return all.map(item => {
+		const host = item.hosts; // objet hôte :contentReference[oaicite:0]{index=0}
+		return {
+		  name:  `${host.name} – ${item.display_name}`,
+		  value: JSON.stringify({ hostId: host.id, serviceId: item.id }),
+		};
+	  });
       },
     },
   };
