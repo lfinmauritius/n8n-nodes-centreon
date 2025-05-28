@@ -149,6 +149,18 @@ export class Centreon implements INodeType {
       },
       // ---- SERVICE: LIST ----
       {
+        displayName: 'Host Name or ID',
+        name: 'hostId',
+        type: 'options',
+        typeOptions: { loadOptionsMethod: 'getHosts' },
+        default: '',
+        displayOptions: {
+                show: { resource: ['service'], operation: ['list'] },
+        },
+        description:
+                'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+      },
+      {
         displayName: 'Service Name (Like Format)',
         name: 'filterName',
         type: 'string',
@@ -164,18 +176,6 @@ export class Centreon implements INodeType {
         typeOptions: { minValue: 1 },
         displayOptions: { show: { resource: ['service'], operation: ['list'] } },
         description: 'Max number of results to return',
-      },
-      {
-    	displayName: 'Host Name or ID',
-	name: 'hostId',
-	type: 'options',
-    	typeOptions: { loadOptionsMethod: 'getHosts' },
-    	default: '',
-    	displayOptions: {
-     	 	show: { resource: ['service'], operation: ['list'] },
-    	},
-    	description:
-      		'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
       },
       // ---- SERVICE: ADD ----
       {
@@ -330,34 +330,70 @@ async function fetchFromCentreon(
   this: ILoadOptionsFunctions,
   endpoint: string,
 ): Promise<INodePropertyOptions[]> {
-  const creds   = (await this.getCredentials('centreonApi')) as ICentreonCreds;
+  // 1) Récupère les credentials et la version
+  const creds = (await this.getCredentials('centreonApi')) as ICentreonCreds;
   const version = this.getNodeParameter('version', 0) as string;
   const baseUrl = creds.baseUrl.replace(/\/+$/, '');
 
+  // 2) Authentification
   const authResp = (await this.helpers.request({
     method: 'POST',
     uri: `${baseUrl}/api/${version}/login`,
     headers: { 'Content-Type': 'application/json' },
-    body: { security: { credentials: { login: creds.username, password: creds.password } } },
+    body: {
+      security: {
+        credentials: {
+          login: creds.username,
+          password: creds.password,
+        },
+      },
+    },
     json: true,
     rejectUnauthorized: false,
-  } as any)) as { security?: { token?: string } };
+  })) as { security?: { token?: string } };
 
   const token = authResp.security?.token;
-  if (!token) throw new NodeOperationError(this.getNode(), 'Cannot authenticate to Centreon');
+  if (!token) {
+    throw new NodeOperationError(this.getNode(), 'Cannot authenticate to Centreon');
+  }
 
-  const resp = (await this.helpers.request({
-    method: 'GET',
-    uri: `${baseUrl}/api/${version}${endpoint}`,
-    headers: { 'Content-Type': 'application/json', 'X-AUTH-TOKEN': token },
-    json: true,
-    rejectUnauthorized: false,
-  } as any)) as { result?: Array<{ id: number; name: string }> };
+  // 3) Pagination manuelle
+  const limit = 100;  // tu peux ajuster
+  let page = 1;
+  const allItems: Array<{ id: number; name: string }> = [];
 
-  const list = resp.result;
-  if (!list) throw new NodeOperationError(this.getNode(), 'Invalid response from Centreon');
+  while (true) {
+    const resp = (await this.helpers.request({
+      method: 'GET',
+      uri: `${baseUrl}/api/${version}${endpoint}`,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-AUTH-TOKEN': token,
+      },
+      qs: { page, limit },
+      json: true,
+      rejectUnauthorized: false,
+    })) as {
+      result: Array<{ id: number; name: string }>;
+      meta?: { pagination: { total: number; page: number; limit: number } };
+    };
 
-  return list.map((e) => ({ name: e.name, value: e.id }));
+    // Ajoute les résultats de cette page
+    allItems.push(...resp.result);
+
+    // Si pas de pagination ou qu'on a tout récupéré, on sort
+    const meta = resp.meta?.pagination;
+    if (!meta || meta.page * meta.limit >= meta.total) {
+      break;
+    }
+    page++;
+  }
+
+  // 4) Retourne sous forme d'options dynamiques
+  return allItems.map((item: { id: number; name: string }) => ({
+    name: item.name,
+    value: item.id,
+  }));
 }
 
 async function getAuthToken(
