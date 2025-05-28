@@ -199,7 +199,7 @@ export class Centreon implements INodeType {
       console.log('Auth response:', authResponse);
       const token = authResponse.security?.token;
       if (!token) {
-        throw new Error('No token returned during authentication');
+		throw new NodeOperationError(this.getNode(), 'No token returned during authentication');
       }
 
       // Fetch monitoring servers
@@ -217,7 +217,7 @@ export class Centreon implements INodeType {
       console.log('Monitoring servers response:', response);
 
       if (!response.result) {
-        throw new Error('Invalid response format');
+		throw new NodeOperationError(this.getNode(), 'Invalid response format');
       }
 
       return response.result.map((srv) => ({ name: srv.name, value: srv.id }));
