@@ -8,6 +8,7 @@ import {
   INodePropertyOptions,
   NodeOperationError,
   NodeConnectionType,
+  NodeApiError,
 } from 'n8n-workflow';
 import { ICentreonCreds } from '../../credentials/CentreonApi.credentials';
 
@@ -35,102 +36,104 @@ export class Centreon implements INodeType {
         return fetchFromCentreon.call(this, '/configuration/services/templates');
       },
       async getServices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-  // 1) Récupère les credentials et la version
-  const creds = (await this.getCredentials('centreonApi')) as ICentreonCreds;
-  const version = this.getNodeParameter('version', 0) as string;
-  const baseUrl = creds.baseUrl.replace(/\/+$/, '');
+ 		  // 1) Récupère credentials et version
+	  const creds = (await this.getCredentials('centreonApi')) as ICentreonCreds;
+	  const version = this.getNodeParameter('version', 0) as string;
+	  const baseUrl = creds.baseUrl.replace(/\/+$/, '');
 
-  // 2) Authentification
-  let token: string;
-  try {
-    const authResp = await this.helpers.request({
-      method: 'POST',
-      uri:    `${baseUrl}/api/${version}/login`,
-      headers:{ 'Content-Type': 'application/json' },
-      body:   {
-        security: {
-          credentials: {
-            login:    creds.username,
-            password: creds.password,
-          },
-        },
-      },
-      json: true,
-      rejectUnauthorized: false,
-    });
-    token = (authResp as any).security?.token;
-    if (!token) {
-      throw new NodeOperationError(
-        this.getNode(),
-        'No authentication token returned from Centreon',
-      );
-    }
-  } catch (err: any) {
-    throw new NodeOperationError(
-      this.getNode(),
-      `Authentication to Centreon failed: ${err.message}`,
-    );
-  }
+	  // 2) Authentification pour récupérer le token
+	  let token: string;
+	  try {
+		const authResp = await this.helpers.request({
+		  method: 'POST',
+		  uri:    `${baseUrl}/api/${version}/login`,
+		  headers:{ 'Content-Type': 'application/json' },
+		  body:   {
+			security: {
+			  credentials: {
+				login:    creds.username,
+				password: creds.password,
+			  },
+			},
+		  },
+		  json: true,
+		  rejectUnauthorized: false,
+		});
+		token = (authResp as any).security?.token;
+		if (!token) {
+		  throw new NodeOperationError(
+			this.getNode(),
+			'No authentication token returned from Centreon',
+		  );
+		}
+	  } catch (error: any) {
+		throw new NodeApiError(
+		  this.getNode(),
+		  error,
+		  { message: 'Failed to authenticate to Centreon' },
+		);
+	  }
 
-  // 3) Pagination manuelle pour récupérer tous les services
-  const limit = 100;
-  let page = 1;
-  const allItems: Array<any> = [];
+	  // 3) Pagination manuelle pour récupérer tous les services
+	  const limit = 100;
+	  let page = 1;
+	  const allItems: any[] = [];
+	  while (true) {
+		let resp: any;
+		try {
+		  resp = await this.helpers.request({
+			method: 'GET',
+			uri:    `${baseUrl}/api/${version}/monitoring/services`,
+			headers:{
+			  'Content-Type': 'application/json',
+			  'X-AUTH-TOKEN':  token,
+			},
+			qs: { page, limit },
+			json:   true,
+			rejectUnauthorized: false,
+		  });
+		} catch (error: any) {
+		  throw new NodeApiError(
+			this.getNode(),
+			error,
+			{ message: `Error fetching services (page ${page})` },
+		  );
+		}
 
-  while (true) {
-    let resp: any;
-    try {
-      resp = await this.helpers.request({
-        method: 'GET',
-        uri:    `${baseUrl}/api/${version}/monitoring/services`,
-        headers:{
-          'Content-Type': 'application/json',
-          'X-AUTH-TOKEN':  token,
-        },
-        qs: { page, limit },
-        json: true,
-        rejectUnauthorized: false,
-      });
-    } catch (err: any) {
-      throw new NodeOperationError(
-        this.getNode(),
-        `Error fetching services page ${page}: ${err.message}`,
-      );
-    }
+		if (!Array.isArray(resp.result)) {
+		  throw new NodeOperationError(
+			this.getNode(),
+			'Unexpected response format: "result" is not an array',
+		  );
+		}
 
-    if (!Array.isArray(resp.result)) {
-      throw new NodeOperationError(
-        this.getNode(),
-        'Unexpected response format when fetching services',
-      );
-    }
+		allItems.push(...resp.result);
 
-    allItems.push(...resp.result);
+		const meta = resp.meta?.pagination;
+		if (!meta || meta.page * meta.limit >= meta.total) {
+		  break;
+		}
+		page++;
+	  }
 
-    const meta = resp.meta?.pagination;
-    if (!meta || meta.page * meta.limit >= meta.total) {
-      break;
-    }
-    page++;
-  }
+	  // 4) Transformation en INodePropertyOptions
+	  return allItems.map((item: any) => {
+		// Récupère l'objet hosts qui contient l'ID et le display_name
+		const hostObj = item.hosts as { id: number; display_name: string; name: string };
+		const hostId = hostObj?.id;
+		// utilise display_name si disponible, sinon fallback sur name
+		const hostName = hostObj?.display_name ?? hostObj?.name ?? 'Unknown Host';
 
-  // 4) Transformation en options dynamiques
-  return allItems.map((item: any) => {
-    // tente hosts, sinon fallback sur host_id / host_name
-    const hostObj   = item.hosts;
-    const hostId    = hostObj?.id   ?? item.host_id   ?? null;
-    const hostName  = hostObj?.name ?? item.host_name ?? 'Unknown Host';
-    const serviceId = item.id;
-    const serviceName =
-      item.display_name ?? item.description ?? `Service ${serviceId}`;
+		const serviceId   = item.id as number;
+		const serviceName = (item.display_name as string) ?? (item.description as string) ?? `Service ${serviceId}`;
 
-    return {
-      name:  `${hostName} – ${serviceName}`,
-      value: JSON.stringify({ hostId, serviceId }),
-    };
-  });
-}
-    } 
+		return {
+		  name:  `${hostName} – ${serviceName}`,
+		  value: JSON.stringify({ hostId, serviceId }),
+		} as INodePropertyOptions;
+	  });
+	}
+      }
   };
 
   description: INodeTypeDescription = {
