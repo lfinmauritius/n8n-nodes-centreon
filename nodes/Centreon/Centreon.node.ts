@@ -168,7 +168,7 @@ export class Centreon implements INodeType {
       // ---- SERVICE: ADD ----
       {
         displayName: 'Service Name',
-        name: 'name',
+        name: 'servicename',
         default: '',
         type: 'string',
         default: '',
@@ -285,7 +285,7 @@ export class Centreon implements INodeType {
             this, creds, token, 'GET', `/monitoring/services${qs}`, {}, ignoreSsl, version,
           );
         } else if (operation === 'add') {
-          const name      = this.getNodeParameter('name', i) as string;
+          const name      = this.getNodeParameter('servicename', i) as string;
           const desc      = this.getNodeParameter('description', i) as string;
           const hostId    = this.getNodeParameter('hostId', i) as number;
           const templates = this.getNodeParameter('templates', i, []) as number[];
