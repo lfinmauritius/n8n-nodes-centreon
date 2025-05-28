@@ -184,27 +184,42 @@ export class Centreon implements INodeType {
 
       if (resource === 'host') {
         if (operation === 'list') {
+	    // 1. Récupérer les paramètres
 	  const filterName = this.getNodeParameter('filterName', i, '') as string;
-          const limit = this.getNodeParameter('limit', i, 10) as number;
-          // Build server-side search and limit parameters
-          const params: string[] = [];
-          if (filterName) {
-            params.push(`search=${encodeURIComponent(JSON.stringify({ 'host.name': filterName }))}`);
-          }
-          if (limit) {
-            params.push(`limit=${limit}`);
-          }
-          const query = params.length ? `?${params.join('&')}` : '';
-          responseData = await centreonRequest.call(
-            this,
-            creds,
-            token,
-            'GET',
-            `/monitoring/hosts${query}`,
-            {},
-            ignoreSsl,
-            version,
-          ); 
+	  const limit = this.getNodeParameter('limit', i, 10) as number;
+
+	  // 2. Construire le ou les paramètres de requête
+	  const params: string[] = [];
+
+	  if (filterName) {
+	    // Format “search” avec $and et opérateur $lk (like)
+	    const searchObj = {
+	      $and: [
+	        { 'host.name': { $lk: filterName } },
+	      ],
+	    };
+	    params.push(`search=${encodeURIComponent(JSON.stringify(searchObj))}`);
+	  }
+
+	  if (limit) {
+	    params.push(`limit=${limit}`);
+	  }
+
+	  const queryString = params.length
+	    ? `?${params.join('&')}`
+	    : '';
+
+	  // 3. Appel API
+	  responseData = await centreonRequest.call(
+	    this,
+	    creds,
+	    token,
+	    'GET',
+	    `/monitoring/hosts${queryString}`,
+	    {},
+	    ignoreSsl,
+	    version,
+  		);
         } else if (operation === 'add') {
           const name = this.getNodeParameter('name', i) as string;
           const address = this.getNodeParameter('address', i) as string;
