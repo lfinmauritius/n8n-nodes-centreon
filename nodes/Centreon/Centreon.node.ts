@@ -36,116 +36,96 @@ export class Centreon implements INodeType {
         return fetchFromCentreon.call(this, '/configuration/services/templates');
       },
       async getServices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-		// 1) Crédentiels & version
-	  const creds   = (await this.getCredentials('centreonApi')) as ICentreonCreds;
-	  const version = this.getNodeParameter('version', 0) as string;
-	  const baseUrl = creds.baseUrl.replace(/\/+$/, '');
+        // 1) Récupère credentials & version
+  const creds   = (await this.getCredentials('centreonApi')) as ICentreonCreds;
+  const version = this.getNodeParameter('version', 0) as string;
+  const baseUrl = creds.baseUrl.replace(/\/+$/, '');
 
-	  // 2) Authentification
-	  let token: string;
-	  try {
-		const authResp = await this.helpers.request({
-		  method: 'POST',
-		  uri:    `${baseUrl}/api/${version}/login`,
-		  headers:{ 'Content-Type': 'application/json' },
-		  body:   {
-			security: {
-			  credentials: {
-				login:    creds.username,
-				password: creds.password,
-			  },
-			},
-		  },
-		  json: true,
-		  rejectUnauthorized: false,
-		});
-		token = (authResp as any).security?.token;
-		if (!token) {
-		  throw new NodeOperationError(
-			this.getNode(),
-			'No authentication token returned from Centreon',
-		  );
-		}
-	  } catch (err: any) {
-		throw new NodeApiError(
-		  this.getNode(),
-		  err,
-		  { message: 'Failed to authenticate to Centreon' },
-		);
-	  }
+  // 2) Authentification pour récupérer le token
+  let token: string;
+  try {
+    const authResp = await this.helpers.request({
+      method: 'POST',
+      uri:    `${baseUrl}/api/${version}/login`,
+      headers:{ 'Content-Type': 'application/json' },
+      body:   {
+        security: {
+          credentials: {
+            login:    creds.username,
+            password: creds.password,
+          },
+        },
+      },
+      json: true,
+      rejectUnauthorized: false,
+    });
+    token = (authResp as any).security?.token;
+    if (!token) {
+      throw new NodeOperationError(
+        this.getNode(),
+        'No authentication token returned from Centreon',
+      );
+    }
+  } catch (err: any) {
+    throw new NodeApiError(
+      this.getNode(),
+      err,
+      { message: 'Failed to authenticate to Centreon' },
+    );
+  }
 
-	  // 3) Pagination manuelle
-	  const limit = 100;
-	  let page    = 1;
-	  const allItems: any[] = [];
-	  while (true) {
-		let resp: any;
-		try {
-		  resp = await this.helpers.request({
-			method: 'GET',
-			uri:    `${baseUrl}/api/${version}/monitoring/services`,
-			headers:{
-			  'Content-Type': 'application/json',
-			  'X-AUTH-TOKEN':  token,
-			},
-			qs: { page, limit },
-			json:   true,
-			rejectUnauthorized: false,
-		  });
-		} catch (err: any) {
-		  throw new NodeApiError(
-			this.getNode(),
-			err,
-			{ message: `Error fetching services (page ${page})` },
-		  );
-		}
+  // 3) Appel unique sans pagination, avec limit élevé
+  let resp: any;
+  try {
+    resp = await this.helpers.request({
+      method: 'GET',
+      uri:    `${baseUrl}/api/${version}/monitoring/services`,
+      headers:{
+        'Content-Type':  'application/json',
+        'X-AUTH-TOKEN':   token,
+      },
+      qs: { limit: 500000 },
+      json:   true,
+      rejectUnauthorized: false,
+    });
+  } catch (err: any) {
+    throw new NodeApiError(
+      this.getNode(),
+      err,
+      { message: 'Failed to fetch services' },
+    );
+  }
 
-		if (!Array.isArray(resp.result)) {
-		  throw new NodeOperationError(
-			this.getNode(),
-			'Unexpected response format: "result" is not an array',
-		  );
-		}
+  if (!Array.isArray(resp.result)) {
+    throw new NodeOperationError(
+      this.getNode(),
+      'Unexpected response format: "result" is not an array',
+    );
+  }
 
-		allItems.push(...resp.result);
+  // 4) Mapping des options
+  return (resp.result as Array<any>).map(item => {
+    const host = item.hosts;
+    if (!host || typeof host.id !== 'number') {
+      throw new NodeOperationError(
+        this.getNode(),
+        `Service item missing hosts information (service id: ${item.id})`,
+      );
+    }
+    const hostName    =
+      (host.display_name as string) ??
+      (host.name         as string) ??
+      'Unknown Host';
+    const serviceName =
+      (item.display_name as string) ??
+      (item.description  as string) ??
+      `Service ${item.id}`;
 
-		const meta = resp.meta as { page: number; limit: number; total: number; };
-		// Arrête si on a tout lu
-		if (!meta || meta.page * meta.limit >= meta.total) {
-		  break;
-		}
-		page++;
-	  }
-
-	  // 4) Construction des options
-	  return allItems
-		.filter(item => item.hosts && typeof item.hosts === 'object')
-		.map((item: any) => {
-		  const hostObj = item.hosts as {
-			id: number;
-			alias?: string;
-			display_name?: string;
-			name?: string;
-		  };
-
-		  const hostId   = hostObj.id;
-		  const hostName =
-			hostObj.alias         ||
-			hostObj.display_name  ||
-			hostObj.name         ||
-			'Unknown Host';
-
-		  const serviceId   = item.id as number;
-		  const serviceName =
-			(item.display_name as string) ??
-			(item.description  as string) ??
-			`Service ${serviceId}`;
-
-		  return {
-			name:  `${hostName} – ${serviceName}`,
-			value: JSON.stringify({ hostId, serviceId }),
-		  } as INodePropertyOptions;
-		});
+    return {
+      name:  `${hostName} – ${serviceName}`,
+      value: JSON.stringify({ hostId: host.id, serviceId: item.id }),
+    } as INodePropertyOptions;
+  });		
 	}
       }
   };
