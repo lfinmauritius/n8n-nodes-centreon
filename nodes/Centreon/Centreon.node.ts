@@ -211,7 +211,7 @@ export class Centreon implements INodeType {
       },
       // ---- HOST: ACK ----
 	{
-	  displayName: 'Host ID',
+	  displayName: 'Host Name or ID',
 	  name: 'hostId',
 	  type: 'options',
 	  typeOptions: { loadOptionsMethod: 'getHosts' },
@@ -219,8 +219,7 @@ export class Centreon implements INodeType {
 	  displayOptions: {
 		show: { resource: ['host'], operation: ['ack'] },
 	  },
-	  description:
-		'Choisissez l’hôte à acquitter (ID ou à partir de la liste)',
+	  description: 'Choisissez l’hôte à acquitter (ID ou à partir de la liste). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 	  displayName: 'Comment',
@@ -238,9 +237,7 @@ export class Centreon implements INodeType {
 	  name: 'notify',
 	  type: 'boolean',
 	  default: false,
-	  displayOptions: {
-		show: { resource: ['host'], operation: ['ack'] },
-	  },
+	  displayOptions: { show: { resource: ['host'], operation: ['ack'] } },
 	  description: "Envoyer une notification aux contacts liés à l’hôte",
 	},
 	{
@@ -389,7 +386,7 @@ export class Centreon implements INodeType {
       },
       // ---- SERVICE: ACK ----
 	{
-	  displayName: 'Host ID',
+	  displayName: 'Host Name or ID',
 	  name: 'hostId',
 	  type: 'options',
 	  typeOptions: { loadOptionsMethod: 'getHosts' },
@@ -397,10 +394,10 @@ export class Centreon implements INodeType {
 	  displayOptions: {
 		show: { resource: ['service'], operation: ['ack'] },
 	  },
-	  description: 'Hôte parent du service',
+	  description: 'Hôte parent du service. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-	  displayName: 'Service ID',
+	  displayName: 'Service Name or ID',
 	  name: 'serviceId',
 	  type: 'options',
 	  typeOptions: { loadOptionsMethod: 'getServicesByHost' },
@@ -408,7 +405,7 @@ export class Centreon implements INodeType {
 	  displayOptions: {
 		show: { resource: ['service'], operation: ['ack'] },
 	  },
-	  description: 'Service à acquitter',
+	  description: 'Service à acquitter. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 	  displayName: 'Comment',
