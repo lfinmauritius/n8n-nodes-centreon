@@ -218,7 +218,7 @@ async function getAuthToken(
 ): Promise<string> {
   const resp = (await this.helpers.request({
     method: 'POST',
-    uri: `${creds.baseUrl.replace(/\/\+$/, '')}/api/${version}/login`,
+    uri: `${creds.baseUrl.replace(/\/+$/, '')}/api/${version}/login`,
     headers: { 'Content-Type': 'application/json' },
     body: { security: { credentials: { login: creds.username, password: creds.password } } },
     json: true,
@@ -242,7 +242,7 @@ async function centreonRequest(
 ): Promise<any> {
   return this.helpers.request({
     method,
-    uri: `${creds.baseUrl.replace(/\/\+$/, '')}/api/${version}${endpoint}`,
+    uri: `${creds.baseUrl.replace(/\/+$/, '')}/api/${version}${endpoint}`,
     headers: {
       'Content-Type': 'application/json',
       'X-AUTH-TOKEN': token,
