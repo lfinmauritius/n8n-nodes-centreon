@@ -160,7 +160,7 @@ export class Centreon implements INodeType {
   async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
     const creds = (await this.getCredentials('centreonApi')) as ICentreonCreds;
     const version = this.getNodeParameter('version', 0) as string;
-    const ignoreSsl = this.getNodeParameter('advancedOptions.ignoreSsl', 0) as boolean;
+    const ignoreSsl = this.getNodeParameter('advancedOptions.ignoreSsl', 0, false) as boolean;
 
     const token = await getAuthToken.call(this, creds, ignoreSsl, version);
 
