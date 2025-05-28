@@ -199,7 +199,7 @@ export class Centreon implements INodeType {
     // Récupérer la liste des serveurs de monitoring
     const serversOptions = {
       method: 'GET',
-      uri: `${creds.baseUrl}/api/${version}/configuration/monitoring/servers`,
+      uri: `${creds.baseUrl}/api/${version}/configuration/monitoring-servers`,
       headers: { 'Content-Type': 'application/json', 'X-AUTH-TOKEN': token },
       json: true,
       rejectUnauthorized: !ignoreSsl,
