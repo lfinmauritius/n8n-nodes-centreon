@@ -84,7 +84,7 @@ export class Centreon implements INodeType {
 
 	  // 4) Map every item, assume item.hosts always present
 	  return (resp.result as Array<any>).map((item) => {
-		const hostObj = item.hosts || {};
+		const hostObj = item.host || {};
 		const hostName =
 		  hostObj.display_name ||
 		  hostObj.name         ||
