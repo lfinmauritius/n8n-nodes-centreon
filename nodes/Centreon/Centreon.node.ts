@@ -391,7 +391,7 @@ export class Centreon implements INodeType {
 	  description: 'Whether the downtime is fixed',
 	},
 	{
-          displayName: 'Schedule Downtime for Services',
+          displayName: 'Schedule Downtime for Services attached to the host',
           name: 'fixed',
           type: 'boolean',
           default: false,
@@ -406,7 +406,7 @@ export class Centreon implements INodeType {
           type: 'number',
           default: 3600,
           typeOptions: { minValue: 1 },
-          displayOptions: { show: { resource: ['service'], operation: ['list'] } },
+          displayOptions: { show: { resource: ['host'], operation: ['downtime'] } },
           description: 'Duration of the downtime',
         },
       // ---- SERVICE: LIST ----
