@@ -390,6 +390,25 @@ export class Centreon implements INodeType {
 	  },
 	  description: 'Whether the downtime is fixed',
 	},
+	{
+          displayName: 'Schedule downtime for services',
+          name: 'fixed',
+          type: 'boolean',
+          default: false,
+          displayOptions: {
+                show: { resource: ['host'], operation: ['downtime'] },
+          },
+          description: 'Whether the downtime is applied to services also',
+        },
+        {
+          displayName: 'Duration in seconds',
+          name: 'duration',
+          type: 'number',
+          default: 3600,
+          typeOptions: { minValue: 1 },
+          displayOptions: { show: { resource: ['service'], operation: ['list'] } },
+          description: 'Duration of the downtime',
+        },
       // ---- SERVICE: LIST ----
       {
         displayName: 'Host Name or ID',
@@ -721,17 +740,29 @@ export class Centreon implements INodeType {
 		version,
 	  );
         } else if (operation === 'downtime') {
-	  const hostId    = this.getNodeParameter('hostId',    i) as number;
-	  const comment   = this.getNodeParameter('comment',   i) as string;
-	  const startTime = this.getNodeParameter('startTime', i) as string;
-	  const endTime   = this.getNodeParameter('endTime',   i) as string;
-	  const fixed     = this.getNodeParameter('fixed',     i) as boolean;
+	  const hostId       = this.getNodeParameter('hostId',    i) as number;
+	  const comment      = this.getNodeParameter('comment',   i) as string;
+	  const fixed        = this.getNodeParameter('fixed',     i) as boolean;
+	  const duration     = this.getNodeParameter('duration',     i) as number;
+          const withservice  = this.getNodeParameter('withservice',     i) as boolean;
+          const rawStart  = this.getNodeParameter('startTime', i) as string;
+          const rawEnd    = this.getNodeParameter('endTime',   i) as string;
+
+          function toIsoUtc(datetime: string): string {
+                 // On remplace l’espace par 'T', on ajoute 'Z' pour indiquer UTC, puis on coupe les millisecondes
+                  const dt = new Date(datetime.replace(' ', 'T') + 'Z');
+                  return dt.toISOString().replace(/\.\d{3}Z$/, 'Z');
+                }
+          const startTime = toIsoUtc(rawStart);
+          const endTime   = toIsoUtc(rawEnd);
 
 	  const body: IDataObject = {
 		comment,
 		start_time: startTime,
 		end_time:   endTime,
-		fixed,
+		is_fixed: fixed,
+		duration: duration,
+		with_services: withservice,
 	  };
 
 	  responseData = await centreonRequest.call(
@@ -833,9 +864,17 @@ export class Centreon implements INodeType {
 		serviceId: number;
 	  };
 	  const comment   = this.getNodeParameter('comment',   i) as string;
-	  const startTime = this.getNodeParameter('startTime', i) as string;
-	  const endTime   = this.getNodeParameter('endTime',   i) as string;
+	  const rawStart  = this.getNodeParameter('startTime', i) as string;
+	  const rawEnd    = this.getNodeParameter('endTime',   i) as string;
 	  const fixed     = this.getNodeParameter('fixed',     i) as boolean;
+
+	  function toIsoUtc(datetime: string): string {
+ 		 // On remplace l’espace par 'T', on ajoute 'Z' pour indiquer UTC, puis on coupe les millisecondes
+		  const dt = new Date(datetime.replace(' ', 'T') + 'Z');
+		  return dt.toISOString().replace(/\.\d{3}Z$/, 'Z');
+		}
+	  const startTime = toIsoUtc(rawStart);
+	  const endTime   = toIsoUtc(rawEnd);
 
 	  const body: IDataObject = {
 		comment,
