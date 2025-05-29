@@ -333,6 +333,62 @@ export class Centreon implements INodeType {
 	  },
 	  description: "Whether to acknowledge the host\'s services",
 	},
+      // ---- HOST: DOWNTIME ----
+	// Host Downtime fields
+	{
+	  displayName: 'Host',
+	  name: 'hostId',
+	  type: 'options',
+	  typeOptions: { loadOptionsMethod: 'getHosts' },
+	  default: '',
+	  displayOptions: {
+		show: { resource: ['host'], operation: ['downtime'] },
+	  },
+	  description: 'Choose the host to put into downtime',
+	},
+	{
+	  displayName: 'Comment',
+	  name: 'comment',
+	  type: 'string',
+	  default: '',
+	  required: true,
+	  displayOptions: {
+		show: { resource: ['host'], operation: ['downtime'] },
+	  },
+	  description: 'Reason for the downtime',
+	},
+	{
+	  displayName: 'Start Time',
+	  name: 'startTime',
+	  type: 'dateTime',
+	  default: '',
+	  required: true,
+	  displayOptions: {
+		show: { resource: ['host'], operation: ['downtime'] },
+	  },
+	  description: 'UTC start time (YYYY-MM-DDThh:mm:ssZ)',
+	},
+	{
+	  displayName: 'End Time',
+	  name: 'endTime',
+	  type: 'dateTime',
+	  default: '',
+	  required: true,
+	  displayOptions: {
+		show: { resource: ['host'], operation: ['downtime'] },
+	  },
+	  description: 'UTC end time (YYYY-MM-DDThh:mm:ssZ)',
+	},
+	{
+	  displayName: 'Fixed',
+	  name: 'fixed',
+	  type: 'boolean',
+	  default: false,
+	  displayOptions: {
+		show: { resource: ['host'], operation: ['downtime'] },
+	  },
+	  description: 'Whether the downtime is fixed',
+	},
       // ---- SERVICE: LIST ----
       {
         displayName: 'Host Name or ID',
@@ -447,6 +503,62 @@ export class Centreon implements INodeType {
             },
           ],
       },
+      // ---- SERVICE: DOWNTIME ----
+	// Service Downtime fields
+	{
+	  displayName: 'Service',
+	  name: 'service',
+	  type: 'options',
+	  typeOptions: { loadOptionsMethod: 'getServices' },
+	  default: '',
+	  displayOptions: {
+		show: { resource: ['service'], operation: ['downtime'] },
+	  },
+	  description: 'Choose the service (Host – Service) to put into downtime',
+	},
+	{
+	  displayName: 'Comment',
+	  name: 'comment',
+	  type: 'string',
+	  default: '',
+	  required: true,
+	  displayOptions: {
+		show: { resource: ['service'], operation: ['downtime'] },
+	  },
+	  description: 'Reason for the downtime',
+	},
+	{
+	  displayName: 'Start Time',
+	  name: 'startTime',
+	  type: 'dateTime',
+	  default: '',
+	  required: true,
+	  displayOptions: {
+		show: { resource: ['service'], operation: ['downtime'] },
+	  },
+	  description: 'UTC start time (YYYY-MM-DDThh:mm:ssZ)',
+	},
+	{
+	  displayName: 'End Time',
+	  name: 'endTime',
+	  type: 'dateTime',
+	  default: '',
+	  required: true,
+	  displayOptions: {
+		show: { resource: ['service'], operation: ['downtime'] },
+	  },
+	  description: 'UTC end time (YYYY-MM-DDThh:mm:ssZ)',
+	},
+	{
+	  displayName: 'Fixed',
+	  name: 'fixed',
+	  type: 'boolean',
+	  default: false,
+	  displayOptions: {
+		show: { resource: ['service'], operation: ['downtime'] },
+	  },
+	  description: 'Whether the downtime is fixed',
+	},
       // ---- SERVICE: ACK ----
 	{
 	  displayName: 'Service Name or ID',
@@ -607,6 +719,30 @@ export class Centreon implements INodeType {
 		ignoreSsl,
 		version,
 	  );
+        } else if (operation === 'downtime') {
+	  const hostId    = this.getNodeParameter('hostId',    i) as number;
+	  const comment   = this.getNodeParameter('comment',   i) as string;
+	  const startTime = this.getNodeParameter('startTime', i) as string;
+	  const endTime   = this.getNodeParameter('endTime',   i) as string;
+	  const fixed     = this.getNodeParameter('fixed',     i) as boolean;
+
+	  const body: IDataObject = {
+		comment,
+		start_time: startTime,
+		end_time:   endTime,
+		fixed,
+	  };
+
+	  responseData = await centreonRequest.call(
+		this,
+		creds,
+		token,
+		`POST`,
+		`/monitoring/hosts/${hostId}/downtimes`,
+		body,
+		ignoreSsl,
+		version,
+	  );	
         }
       }
       else if (resource === 'service') {
@@ -689,7 +825,35 @@ export class Centreon implements INodeType {
 	  ignoreSsl,
 	  version,
 	);
-        }
+        } else if (operation === 'downtime') {
+	  const serviceJson = this.getNodeParameter('service', i) as string;
+	  const { hostId, serviceId } = JSON.parse(serviceJson) as {
+		hostId: number;
+		serviceId: number;
+	  };
+	  const comment   = this.getNodeParameter('comment',   i) as string;
+	  const startTime = this.getNodeParameter('startTime', i) as string;
+	  const endTime   = this.getNodeParameter('endTime',   i) as string;
+	  const fixed     = this.getNodeParameter('fixed',     i) as boolean;
+
+	  const body: IDataObject = {
+		comment,
+		start_time: startTime,
+		end_time:   endTime,
+		fixed,
+	  };
+
+	  responseData = await centreonRequest.call(
+		this,
+		creds,
+		token,
+		`POST`,
+		`/monitoring/hosts/${hostId}/services/${serviceId}/downtimes`,
+		body,
+		ignoreSsl,
+		version,
+	  );
+	}
       }
 
       if (responseData !== undefined) {
