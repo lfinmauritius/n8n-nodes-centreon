@@ -151,7 +151,6 @@ export class Centreon implements INodeType {
 	  { name: 'Downtime', value: 'downtime' },
         ],
         default: 'list',
-        description: 'Operation to perform',
       },
       // ---- HOST: LIST ----
       {
@@ -449,7 +448,7 @@ export class Centreon implements INodeType {
         typeOptions: { loadOptionsMethod: 'getHosts' },
         required: true,
         displayOptions: { show: { resource: ['service'], operation: ['add'] } },
-        description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+        description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
       },
       {
         displayName: 'Service Name',
