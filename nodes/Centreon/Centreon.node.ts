@@ -336,7 +336,7 @@ export class Centreon implements INodeType {
       // ---- HOST: DOWNTIME ----
 	// Host Downtime fields
 	{
-	  displayName: 'Host',
+	  displayName: 'Host Name or ID',
 	  name: 'hostId',
 	  type: 'options',
 	  typeOptions: { loadOptionsMethod: 'getHosts' },
@@ -344,7 +344,7 @@ export class Centreon implements INodeType {
 	  displayOptions: {
 		show: { resource: ['host'], operation: ['downtime'] },
 	  },
-	  description: 'Choose the host to put into downtime',
+	  description: 'Choose the host to put into downtime. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 	  displayName: 'Comment',
@@ -506,7 +506,7 @@ export class Centreon implements INodeType {
       // ---- SERVICE: DOWNTIME ----
 	// Service Downtime fields
 	{
-	  displayName: 'Service',
+	  displayName: 'Service Name or ID',
 	  name: 'service',
 	  type: 'options',
 	  typeOptions: { loadOptionsMethod: 'getServices' },
@@ -514,7 +514,7 @@ export class Centreon implements INodeType {
 	  displayOptions: {
 		show: { resource: ['service'], operation: ['downtime'] },
 	  },
-	  description: 'Choose the service (Host – Service) to put into downtime',
+	  description: 'Choose the service (Host – Service) to put into downtime. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 	  displayName: 'Comment',
