@@ -392,7 +392,7 @@ export class Centreon implements INodeType {
 	},
 	{
           displayName: 'Schedule Downtime for Services Attached to the Host',
-          name: 'fixed',
+          name: 'withservices',
           type: 'boolean',
           default: false,
           displayOptions: {
@@ -744,7 +744,7 @@ export class Centreon implements INodeType {
 	  const comment      = this.getNodeParameter('comment',   i) as string;
 	  const fixed        = this.getNodeParameter('fixed',     i) as boolean;
 	  const duration     = this.getNodeParameter('duration',     i) as number;
-          const withservice  = this.getNodeParameter('withservice',     i) as boolean;
+          const withservice  = this.getNodeParameter('withservices',     i) as boolean;
           const rawStart  = this.getNodeParameter('startTime', i) as string;
           const rawEnd    = this.getNodeParameter('endTime',   i) as string;
 
