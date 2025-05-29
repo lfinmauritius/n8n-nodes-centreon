@@ -147,6 +147,7 @@ export class Centreon implements INodeType {
           { name: 'List', value: 'list' },
           { name: 'Add', value: 'add' },
 	  { name: 'Acknowledge', value: 'ack' },
+	  { name: 'Downtime', value: 'downtime' },
         ],
         default: 'list',
         description: 'Opération à réaliser',
