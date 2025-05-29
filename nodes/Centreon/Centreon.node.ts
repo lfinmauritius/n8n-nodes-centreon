@@ -579,6 +579,15 @@ export class Centreon implements INodeType {
 	  },
 	  description: 'Whether the downtime is fixed',
 	},
+	{
+          displayName: 'Duration in Seconds',
+          name: 'duration',
+          type: 'number',
+          default: 3600,
+          typeOptions: { minValue: 1 },
+          displayOptions: { show: { resource: ['service'], operation: ['downtime'] } },
+          description: 'Duration of the downtime',
+        },
       // ---- SERVICE: ACK ----
 	{
 	  displayName: 'Service Name or ID',
@@ -867,6 +876,7 @@ export class Centreon implements INodeType {
 	  const rawStart  = this.getNodeParameter('startTime', i) as string;
 	  const rawEnd    = this.getNodeParameter('endTime',   i) as string;
 	  const fixed     = this.getNodeParameter('fixed',     i) as boolean;
+	  const duration  = this.getNodeParameter('duration',  i) as number;
 
 	  function toIsoUtc(datetime: string): string {
  		 // On remplace l’espace par 'T', on ajoute 'Z' pour indiquer UTC, puis on coupe les millisecondes
@@ -881,6 +891,7 @@ export class Centreon implements INodeType {
 		start_time: startTime,
 		end_time:   endTime,
 		fixed,
+	        duration,
 	  };
 
 	  responseData = await centreonRequest.call(
