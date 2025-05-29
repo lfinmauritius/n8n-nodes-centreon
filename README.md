@@ -10,15 +10,16 @@ The **n8n-nodes-centreon** package integrates Centreon into your n8n workflows t
 
 - Authenticate with the Centreon API (login/token)
 - Create downtimes (maintenance windows) for hosts and services
-- List existing downtimes
-- Delete downtimes
+- Create hosts or services
+- List existing hosts or services
+- Acknowldge hosts or services
 - Full support for API parameters (duration, type, comments, etc.)
 
 ## Prerequisites
 
 - **n8n** v0.200.0 or higher
 - **Centreon** v22.10 or higher
-- A Centreon API user with the required permissions
+- A Centreon API user with the required permissions (ACL and rights on Realtime API and configuration API)
 
 ## Installation
 
@@ -73,7 +74,13 @@ Contributions are welcome! To suggest features, fix bugs, or improve documentati
 
 ## Support
 
-If you encounter any issues or have questions, please open an issue on the [GitHub repository](https://github.com/your-org/n8n-nodes-centreon).
+If you encounter any issues or have questions, please open an issue on the [GitHub repository](https://github.com/lfinmauritius/n8n-nodes-centreon/).
+
+## Author
+
+AI and Monitoring Expert - Loic FONTAINE
+Author of "Centreon - Maitrisez la supervision de votre système d'informations"
+Add me on LinkedIn : https://www.linkedin.com/in/loicfontaine/
 
 ---
 
