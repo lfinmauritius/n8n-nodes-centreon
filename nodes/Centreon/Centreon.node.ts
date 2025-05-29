@@ -40,6 +40,7 @@ export class Centreon implements INodeType {
 	  const creds   = (await this.getCredentials('centreonApi')) as ICentreonCreds;
 	  const version = this.getNodeParameter('version', 0) as string;
 	  const baseUrl = creds.baseUrl.replace(/\/+$/, '');
+	  const ignoreSsl = creds.ignoreSsl as boolean;
 
 	  // 2) Authenticate
 	  let token: string;
@@ -50,7 +51,7 @@ export class Centreon implements INodeType {
 		  headers:{ 'Content-Type': 'application/json' },
 		  body:   { security: { credentials: { login: creds.username, password: creds.password } } },
 		  json:   true,
-		  rejectUnauthorized: false,
+		  rejectUnauthorized: !ignoreSsl,
 		});
 		token = (authResp as any).security?.token;
 		if (!token) {
@@ -72,7 +73,7 @@ export class Centreon implements INodeType {
 		  },
 		  qs: { limit: 500000 },
 		  json:   true,
-		  rejectUnauthorized: false,
+		  rejectUnauthorized: !ignoreSsl,
 		});
 	  } catch (err: any) {
 		throw new NodeApiError(this.getNode(), err, { message: 'Failed to fetch services' });
@@ -384,7 +385,7 @@ export class Centreon implements INodeType {
 	  displayName: 'Fixed',
 	  name: 'fixed',
 	  type: 'boolean',
-	  default: false,
+	  default: true,
 	  displayOptions: {
 		show: { resource: ['host'], operation: ['downtime'] },
 	  },
@@ -573,7 +574,7 @@ export class Centreon implements INodeType {
 	  displayName: 'Fixed',
 	  name: 'fixed',
 	  type: 'boolean',
-	  default: false,
+	  default: true,
 	  displayOptions: {
 		show: { resource: ['service'], operation: ['downtime'] },
 	  },
@@ -641,31 +642,14 @@ export class Centreon implements INodeType {
 	  },
 	  description: "Whether to keep acknowledge even if the engine restarts",
 	},
-      // ---- ADVANCED OPTIONS ----
-      {
-        displayName: 'Options Avancées',
-        name: 'advancedOptions',
-        type: 'collection',
-        placeholder: 'Afficher Options Avancées',
-        default: {},
-        options: [
-          {
-            displayName: 'Ignore SSL Errors',
-            name: 'ignoreSsl',
-            type: 'boolean',
-            default: false,
-            description: 'Whether to ignore TLS certificate errors',
-          },
-        ],
-      },
     ],
   };
 
   async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
     const creds = (await this.getCredentials('centreonApi')) as ICentreonCreds;
     const version = this.getNodeParameter('version', 0) as string;
-    const ignoreSsl = this.getNodeParameter('advancedOptions.ignoreSsl', 0, false) as boolean;
-    const token = await getAuthToken.call(this, creds, ignoreSsl, version);
+    const ignoreSsl = creds.ignoreSsl as boolean;
+    const token = await getAuthToken.call(this, creds, version);
 
     const items = this.getInputData();
     const returnData: IDataObject[] = [];
@@ -890,7 +874,7 @@ export class Centreon implements INodeType {
 		comment,
 		start_time: startTime,
 		end_time:   endTime,
-		fixed,
+		is_fixed: fixed,
 	        duration,
 	  };
 
@@ -927,6 +911,7 @@ async function fetchFromCentreon(
   const creds = (await this.getCredentials('centreonApi')) as ICentreonCreds;
   const version = this.getNodeParameter('version', 0) as string;
   const baseUrl = creds.baseUrl.replace(/\/+$/, '');
+  const ignoreSsl = creds.ignoreSsl as boolean;
 
   // 2) Authentification
   const authResp = (await this.helpers.request({
@@ -942,7 +927,7 @@ async function fetchFromCentreon(
       },
     },
     json: true,
-    rejectUnauthorized: false,
+    rejectUnauthorized: !ignoreSsl,
   })) as { security?: { token?: string } };
 
   const token = authResp.security?.token;
@@ -965,7 +950,7 @@ async function fetchFromCentreon(
       },
       qs: { page, limit },
       json: true,
-      rejectUnauthorized: false,
+      rejectUnauthorized: !ignoreSsl,
     })) as {
       result: Array<{ id: number; name: string }>;
       meta?: { pagination: { total: number; page: number; limit: number } };
@@ -992,7 +977,6 @@ async function fetchFromCentreon(
 async function getAuthToken(
   this: IExecuteFunctions,
   creds: ICentreonCreds,
-  ignoreSsl: boolean,
   version: string,
 ): Promise<string> {
   const resp = (await this.helpers.request({
@@ -1001,7 +985,7 @@ async function getAuthToken(
     headers: { 'Content-Type': 'application/json' },
     body: { security: { credentials: { login: creds.username, password: creds.password } } },
     json: true,
-    rejectUnauthorized: !ignoreSsl,
+    rejectUnauthorized: !creds.ignoreSsl,
   } as any)) as { security?: { token?: string } };
 
   if (!resp.security?.token) throw new NodeOperationError(this.getNode(), 'Authentication failed');

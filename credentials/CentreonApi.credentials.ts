@@ -7,6 +7,7 @@ export interface ICentreonCreds {
 	baseUrl: string;
 	username: string;
 	password: string;
+	ignoreSsl: boolean;
 }
 
 export class CentreonApi implements ICredentialType {
@@ -37,6 +38,13 @@ export class CentreonApi implements ICredentialType {
 			default: '',
 			required: true,
 		},
+		{
+		      displayName: 'Ignore SSL Issues',
+		      name: 'ignoreSsl',
+		      type: 'boolean',
+		      default: false,
+		      description: 'Whether to ignore SSL certificate validation',
+    		},
 	];
 }
 
