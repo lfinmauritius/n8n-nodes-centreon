@@ -22,7 +22,7 @@
 		"outDir": "./dist/",
 	},
 	"include": [
-		"credentials/**/*",
+		"credentials/CentreonApi.credentials.ts",
 		"nodes/Centreon/custom.d.ts",
 		"nodes/**/*",
 		"nodes/**/*.json",
