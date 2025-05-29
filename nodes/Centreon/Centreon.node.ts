@@ -114,7 +114,7 @@ export class Centreon implements INodeType {
     group: ['transform'],
     version: 1,
     subtitle: '{{ $parameter.resource }}: {{ $parameter.operation }}',
-    description: 'Interagir avec l’API Centreon Web (v2)',
+    description: 'Connect and manage Centreon using Centroen Web API (v2)',
     defaults: { name: 'Centreon' },
     inputs: ['main'] as NodeConnectionType[],
     outputs: ['main'] as NodeConnectionType[],
@@ -125,7 +125,7 @@ export class Centreon implements INodeType {
         name: 'version',
         type: 'string',
         default: 'latest',
-        description: 'Version de l’API (e.g., latest, v24.10)',
+        description: 'Version of the API (e.g., latest, v24.10)',
       },
       {
         displayName: 'Resource',
@@ -137,7 +137,7 @@ export class Centreon implements INodeType {
           { name: 'Service', value: 'service' },
         ],
         default: 'host',
-        description: 'Type de ressource Centreon',
+        description: 'Centreon resource type',
       },
       {
         displayName: 'Operation',
@@ -151,7 +151,7 @@ export class Centreon implements INodeType {
 	  { name: 'Downtime', value: 'downtime' },
         ],
         default: 'list',
-        description: 'Opération à réaliser',
+        description: 'Operation to perform',
       },
       // ---- HOST: LIST ----
       {
@@ -179,7 +179,7 @@ export class Centreon implements INodeType {
         default: '',
         required: true,
         displayOptions: { show: { resource: ['host'], operation: ['add'] } },
-        description: 'Nom de l’hôte à créer',
+        description: 'Name of the host to create',
       },
       {
         displayName: 'Address',
@@ -188,7 +188,7 @@ export class Centreon implements INodeType {
         default: '',
         required: true,
         displayOptions: { show: { resource: ['host'], operation: ['add'] } },
-        description: 'Adresse IP de l’hôte',
+        description: 'IP address of the host',
       },
       {
         displayName: 'Monitoring Server Name or ID',
@@ -221,7 +221,7 @@ export class Centreon implements INodeType {
 	  default: { macroValues: [] },
 	  displayOptions: {
 	    show: {
-	      resource: ['host'],        // ou ['service'] pour le bloc service:add
+	      resource: ['host'],        
 	      operation: ['add'],
 	    },
 	  },
@@ -284,7 +284,7 @@ export class Centreon implements INodeType {
 	  displayOptions: {
 		show: { resource: ['host'], operation: ['ack'] },
 	  },
-	  description: 'Choisissez l’hôte à acquitter (ID ou à partir de la liste). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+	  description: 'The host to acknowledge. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 	  displayName: 'Comment',
@@ -295,7 +295,7 @@ export class Centreon implements INodeType {
 	  displayOptions: {
 		show: { resource: ['host'], operation: ['ack'] },
 	  },
-	  description: 'Raison de l’acquittement (obligatoire)',
+	  description: 'Reason for the acknowledgment (required)',
 	},
 	{
 	  displayName: 'Notify',
@@ -449,7 +449,7 @@ export class Centreon implements INodeType {
         typeOptions: { loadOptionsMethod: 'getHosts' },
         required: true,
         displayOptions: { show: { resource: ['service'], operation: ['add'] } },
-        description: 'Hôte associé au service. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+        description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
       },
       {
         displayName: 'Service Name',
@@ -458,7 +458,7 @@ export class Centreon implements INodeType {
         type: 'string',
         required: true,
         displayOptions: { show: { resource: ['service'], operation: ['add'] } },
-        description: 'Nom du service à créer',
+        description: 'Service Name to create',
       },
       {
         displayName: 'Template(s) Names or Name or ID',
@@ -467,7 +467,7 @@ export class Centreon implements INodeType {
         typeOptions: { loadOptionsMethod: 'getServiceTemplates' },
         default: '',
         displayOptions: { show: { resource: ['service'], operation: ['add'] } },
-        description: 'Templates de service à appliquer. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+        description: 'Service\'s template to apply. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
       },
       {
           displayName: 'Macros',
@@ -480,7 +480,7 @@ export class Centreon implements INodeType {
           default: { macroValues: [] },
           displayOptions: {
             show: {
-              resource: ['service'],        // ou ['service'] pour le bloc service:add
+              resource: ['service'],        
               operation: ['add'],
             },
           },
@@ -599,7 +599,7 @@ export class Centreon implements INodeType {
 	  displayOptions: {
 		show: { resource: ['service'], operation: ['ack'] },
 	  },
-	  description: 'Service à acquitter. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+	  description: 'Service to acknowledge. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 	  displayName: 'Comment',
@@ -610,7 +610,7 @@ export class Centreon implements INodeType {
 	  displayOptions: {
 		show: { resource: ['service'], operation: ['ack'] },
 	  },
-	  description: 'Raison de l’acquittement (obligatoire)',
+	  description: 'Reason for the acknowledgment (required)',
 	},
 	{
 	  displayName: 'Notify',
