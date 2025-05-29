@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-centreon",
-  "version": "0.1.86",
+  "version": "0.1.87",
   "description": "Centreon node for n8n",
   "keywords": [
     "n8n-community-node-package"
