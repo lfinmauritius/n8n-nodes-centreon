@@ -391,7 +391,7 @@ export class Centreon implements INodeType {
 	  description: 'Whether the downtime is fixed',
 	},
 	{
-          displayName: 'Schedule Downtime for Services attached to the host',
+          displayName: 'Schedule Downtime for Services Attached to the Host',
           name: 'fixed',
           type: 'boolean',
           default: false,
