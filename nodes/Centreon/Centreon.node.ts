@@ -114,7 +114,7 @@ export class Centreon implements INodeType {
     group: ['transform'],
     version: 1,
     subtitle: '{{ $parameter.resource }}: {{ $parameter.operation }}',
-    description: 'Connect and manage Centreon using Centroen Web API (v2)',
+    description: 'Connect and manage Centreon using Centreon Web API (v2)',
     defaults: { name: 'Centreon' },
     inputs: ['main'] as NodeConnectionType[],
     outputs: ['main'] as NodeConnectionType[],
