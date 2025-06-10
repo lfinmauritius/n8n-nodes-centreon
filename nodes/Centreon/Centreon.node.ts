@@ -1055,7 +1055,7 @@ async function executeHostDelete(
 ): Promise<any> {
   const hostId = this.getNodeParameter('hostId', itemIndex) as number;
 
-  return centreonRequest.call(
+  const response = await centreonRequest.call(
     this,
     creds,
     token,
@@ -1066,6 +1066,14 @@ async function executeHostDelete(
     ignoreSsl,
     version,
   );
+
+  // Enrichir la réponse avec des informations utiles
+  return {
+    ...response,
+    operation: 'delete',
+    resource: 'host',
+    resourceId: hostId,
+  };
 }
 
 async function executeHostAck(
@@ -1237,7 +1245,7 @@ async function executeServiceDelete(
 ): Promise<any> {
   const serviceId = this.getNodeParameter('service', itemIndex) as number;
 
-  return centreonRequest.call(
+  const response = await centreonRequest.call(
     this,
     creds,
     token,
@@ -1248,6 +1256,14 @@ async function executeServiceDelete(
     ignoreSsl,
     version,
   );
+
+  // Enrichir la réponse avec des informations utiles
+  return {
+    ...response,
+    operation: 'delete',
+    resource: 'service',
+    resourceId: serviceId,
+  };
 }
 
 async function executeServiceAck(
@@ -1523,5 +1539,22 @@ async function centreonRequest(
     requestOptions.qs = options.params;
   }
 
-  return this.helpers.request(requestOptions);
+  try {
+    const response = await this.helpers.request(requestOptions);
+    
+    // Si la réponse est vide (cas typique des DELETE), retourner un objet de succès
+    if (response === undefined || response === null || response === '' || 
+        (typeof response === 'object' && Object.keys(response).length === 0)) {
+      return {
+        success: true,
+        message: `${options.method} ${options.endpoint} completed successfully`,
+        timestamp: new Date().toISOString()
+      };
+    }
+    
+    return response;
+  } catch (error) {
+    // En cas d'erreur, la propager
+    throw error;
+  }
 }
