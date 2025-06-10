@@ -72,10 +72,108 @@ export class Centreon implements INodeType {
       async getHosts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
         return fetchFromCentreon.call(this, '/configuration/hosts');
       },
+      /** Hosts for monitoring operations */
+      async getHostsMonitoring(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+        const creds = (await this.getCredentials('centreonApi')) as ICentreonCreds;
+        const version = this.getNodeParameter('version', 0) as string;
+        const baseUrl = creds.baseUrl.replace(/\/+$/, '');
+        const ignoreSsl = creds.ignoreSsl as boolean;
+
+        const authResp = (await this.helpers.request({
+          method: 'POST',
+          uri: `${baseUrl}/api/${version}/login`,
+          headers: { 'Content-Type': 'application/json' },
+          body: {
+            security: {
+              credentials: {
+                login: creds.username,
+                password: creds.password,
+              },
+            },
+          },
+          json: true,
+          rejectUnauthorized: !ignoreSsl,
+        })) as { security?: { token?: string } };
+
+        const token = authResp.security?.token;
+        if (!token) {
+          throw new NodeOperationError(this.getNode(), 'Cannot authenticate to Centreon');
+        }
+
+        const resp = (await this.helpers.request({
+          method: 'GET',
+          uri: `${baseUrl}/api/${version}/monitoring/hosts`,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-AUTH-TOKEN': token,
+          },
+          qs: { limit: 500 },
+          json: true,
+          rejectUnauthorized: !ignoreSsl,
+        })) as {
+          result: Array<{ id: number; name: string; display_name?: string }>;
+        };
+
+        return resp.result.map((item) => ({
+          name: item.display_name || item.name,
+          value: item.id,
+        }));
+      },
       /** Service templates */
       async getServiceTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
         return fetchFromCentreon.call(this, '/configuration/services/templates');
       },
+      /** Services for configuration (delete) */
+      async getServicesConfiguration(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+        const creds = (await this.getCredentials('centreonApi')) as ICentreonCreds;
+        const version = this.getNodeParameter('version', 0) as string;
+        const baseUrl = creds.baseUrl.replace(/\/+$/, '');
+        const ignoreSsl = creds.ignoreSsl as boolean;
+
+        const authResp = (await this.helpers.request({
+          method: 'POST',
+          uri: `${baseUrl}/api/${version}/login`,
+          headers: { 'Content-Type': 'application/json' },
+          body: {
+            security: {
+              credentials: {
+                login: creds.username,
+                password: creds.password,
+              },
+            },
+          },
+          json: true,
+          rejectUnauthorized: !ignoreSsl,
+        })) as { security?: { token?: string } };
+
+        const token = authResp.security?.token;
+        if (!token) {
+          throw new NodeOperationError(this.getNode(), 'Cannot authenticate to Centreon');
+        }
+
+        const resp = (await this.helpers.request({
+          method: 'GET',
+          uri: `${baseUrl}/api/${version}/configuration/services`,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-AUTH-TOKEN': token,
+          },
+          qs: { limit: 500 },
+          json: true,
+          rejectUnauthorized: !ignoreSsl,
+        })) as {
+          result: Array<{ id: number; name: string; host_id?: number; host?: { name: string } }>;
+        };
+
+        return resp.result.map((item) => {
+          const hostName = item.host?.name || `Host ${item.host_id}` || 'Unknown Host';
+          return {
+            name: `${hostName} – ${item.name}`,
+            value: item.id,
+          };
+        });
+      },
+      /** Services for monitoring operations */
       async getServices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
         // 1) Credentials & version
         const creds = (await this.getCredentials('centreonApi')) as ICentreonCreds;
@@ -141,7 +239,7 @@ export class Centreon implements INodeType {
 
           return {
             name: `${hostName} – ${serviceName}`,
-            value: JSON.stringify({ hostId: hostObj.id, serviceId }),
+            value: JSON.stringify({ hostId: hostObj.id || null, serviceId }),
           } as INodePropertyOptions;
         });
       }
@@ -374,7 +472,7 @@ export class Centreon implements INodeType {
         displayName: 'Host Name or ID',
         name: 'hostId',
         type: 'options',
-        typeOptions: { loadOptionsMethod: 'getHosts' },
+        typeOptions: { loadOptionsMethod: 'getHostsMonitoring' },
         default: '',
         displayOptions: {
           show: { resource: ['host'], operation: ['ack'] },
@@ -435,7 +533,7 @@ export class Centreon implements INodeType {
         displayName: 'Host Name or ID',
         name: 'hostId',
         type: 'options',
-        typeOptions: { loadOptionsMethod: 'getHosts' },
+        typeOptions: { loadOptionsMethod: 'getHostsMonitoring' },
         default: '',
         displayOptions: {
           show: { resource: ['host'], operation: ['downtime'] },
@@ -623,7 +721,7 @@ export class Centreon implements INodeType {
         displayName: 'Service Name or ID',
         name: 'service',
         type: 'options',
-        typeOptions: { loadOptionsMethod: 'getServices' },
+        typeOptions: { loadOptionsMethod: 'getServicesConfiguration' },
         default: '',
         required: true,
         displayOptions: {
@@ -813,16 +911,8 @@ export class Centreon implements INodeType {
           responseData = await executeMonitoringServerOperation.call(this, operation, i, creds, token, version, ignoreSsl);
         }
 
-        if (responseData !== undefined && responseData !== null) {
+        if (responseData !== undefined) {
           returnData.push(responseData as IDataObject);
-        } else {
-          // Si pas de données retournées, ajouter un objet de succès
-          returnData.push({ 
-            success: true, 
-            operation: operation,
-            resource: resource,
-            message: 'Operation completed successfully'
-          });
         }
       } catch (error) {
         if (this.continueOnFail()) {
@@ -991,7 +1081,7 @@ async function executeHostDelete(
 ): Promise<any> {
   const hostId = this.getNodeParameter('hostId', itemIndex) as number;
 
-  const response = await centreonRequest.call(
+  return centreonRequest.call(
     this,
     creds,
     token,
@@ -1002,9 +1092,6 @@ async function executeHostDelete(
     ignoreSsl,
     version,
   );
-
-  // Si pas de réponse, retourner un message de succès
-  return response || { success: true, message: `Host ${hostId} deleted successfully` };
 }
 
 async function executeHostAck(
@@ -1174,10 +1261,9 @@ async function executeServiceDelete(
   version: string,
   ignoreSsl: boolean,
 ): Promise<any> {
-  const serviceJson = this.getNodeParameter('service', itemIndex) as string;
-  const { serviceId } = JSON.parse(serviceJson) as ServiceIdentifier;
+  const serviceId = this.getNodeParameter('service', itemIndex) as number;
 
-  const response = await centreonRequest.call(
+  return centreonRequest.call(
     this,
     creds,
     token,
@@ -1188,9 +1274,6 @@ async function executeServiceDelete(
     ignoreSsl,
     version,
   );
-
-  // Si pas de réponse, retourner un message de succès
-  return response || { success: true, message: `Service ${serviceId} deleted successfully` };
 }
 
 async function executeServiceAck(
@@ -1457,21 +1540,5 @@ async function centreonRequest(
     requestOptions.qs = options.params;
   }
 
-  try {
-    const response = await this.helpers.request(requestOptions);
-    // Si la réponse est vide ou undefined, retourner un objet avec un message
-    if (response === undefined || response === null || response === '') {
-      return { success: true, message: 'Operation completed successfully' };
-    }
-    return response;
-  } catch (error) {
-    // Si c'est une erreur avec un body de réponse, essayer de le parser
-    if (error.response && error.response.body) {
-      throw new NodeApiError(this.getNode(), error, {
-        message: `Request failed: ${error.message}`,
-        description: JSON.stringify(error.response.body),
-      });
-    }
-    throw error;
-  }
+  return this.helpers.request(requestOptions);
 }
