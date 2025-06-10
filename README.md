@@ -10,9 +10,10 @@ The **n8n-nodes-centreon** package integrates Centreon into your n8n workflows t
 
 - Authenticate with the Centreon API (login/token)
 - Create downtimes (maintenance windows) for hosts and services
-- Create hosts or services
+- Create or delete hosts or services
 - List existing hosts or services
 - Acknowldge hosts or services
+- List or apply configuration on pollers
 - Full support for API parameters (duration, type, comments, etc.)
 
 ## Prerequisites
@@ -46,10 +47,9 @@ Then restart your n8n instance.
 
 1. Create a new workflow in n8n.
 2. Add a **Centreon** node and choose the desired operation:
-   - **Create Downtime**: Schedule a maintenance window
-   - **Acknowledge**: Acknowledge an host or a service
-   - **List**: List hosts and services
-   - **Create**: Create a host or a service
+   - **Host** : Acknowledge/Add/Delete/Downtime or List host
+   - **Service** :  Acknowledge/Add/Delete/Downtime or List service
+   - **Monitoring server** : List or Apply configuration on a poller
 3. Select your Centreon credentials and provide the required parameters (host, service, start time, end time, etc.).
 4. Connect it into your workflow and execute!
 
