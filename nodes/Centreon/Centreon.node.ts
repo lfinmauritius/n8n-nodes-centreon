@@ -187,11 +187,11 @@ export class Centreon implements INodeType {
         type: 'options',
         noDataExpression: true,
         options: [
-          { name: 'List', value: 'list', action: 'List hosts' },
+          { name: 'Acknowledge', value: 'ack', action: 'Acknowledge a host' },
           { name: 'Add', value: 'add', action: 'Add a host' },
           { name: 'Delete', value: 'delete', action: 'Delete a host' },
-          { name: 'Acknowledge', value: 'ack', action: 'Acknowledge a host' },
           { name: 'Downtime', value: 'downtime', action: 'Schedule downtime for a host' },
+          { name: 'List', value: 'list', action: 'List hosts' },
         ],
         default: 'list',
         displayOptions: {
@@ -206,11 +206,11 @@ export class Centreon implements INodeType {
         type: 'options',
         noDataExpression: true,
         options: [
-          { name: 'List', value: 'list', action: 'List services' },
+          { name: 'Acknowledge', value: 'ack', action: 'Acknowledge a service' },
           { name: 'Add', value: 'add', action: 'Add a service' },
           { name: 'Delete', value: 'delete', action: 'Delete a service' },
-          { name: 'Acknowledge', value: 'ack', action: 'Acknowledge a service' },
           { name: 'Downtime', value: 'downtime', action: 'Schedule downtime for a service' },
+          { name: 'List', value: 'list', action: 'List services' },
         ],
         default: 'list',
         displayOptions: {
@@ -225,8 +225,8 @@ export class Centreon implements INodeType {
         type: 'options',
         noDataExpression: true,
         options: [
-          { name: 'List', value: 'list', action: 'List monitoring servers' },
           { name: 'Apply Configuration', value: 'applyConfiguration', action: 'Apply configuration to monitoring servers' },
+          { name: 'List', value: 'list', action: 'List monitoring servers' },
         ],
         default: 'list',
         displayOptions: {
