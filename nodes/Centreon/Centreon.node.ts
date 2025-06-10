@@ -151,7 +151,8 @@ export class Centreon implements INodeType {
           throw new NodeOperationError(this.getNode(), 'Cannot authenticate to Centreon');
         }
 
-        const resp = (await this.helpers.request({
+        // 1. D'abord récupérer les services
+        const servicesResp = (await this.helpers.request({
           method: 'GET',
           uri: `${baseUrl}/api/${version}/configuration/services`,
           headers: {
@@ -162,14 +163,36 @@ export class Centreon implements INodeType {
           json: true,
           rejectUnauthorized: !ignoreSsl,
         })) as {
-          result: Array<{ id: number; name: string; host_id?: number; host?: { name: string } }>;
+          result: Array<{ id: number; name: string; host_id: number }>;
         };
 
-        return resp.result.map((item) => {
-          const hostName = item.host?.name || `Host ${item.host_id}` || 'Unknown Host';
+        // 2. Récupérer tous les hosts pour mapper les IDs aux noms
+        const hostsResp = (await this.helpers.request({
+          method: 'GET',
+          uri: `${baseUrl}/api/${version}/configuration/hosts`,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-AUTH-TOKEN': token,
+          },
+          qs: { limit: 500 },
+          json: true,
+          rejectUnauthorized: !ignoreSsl,
+        })) as {
+          result: Array<{ id: number; name: string }>;
+        };
+
+        // 3. Créer une map des hosts pour un accès rapide
+        const hostsMap = new Map<number, string>();
+        hostsResp.result.forEach(host => {
+          hostsMap.set(host.id, host.name);
+        });
+
+        // 4. Mapper les services avec les noms des hosts
+        return servicesResp.result.map((service) => {
+          const hostName = hostsMap.get(service.host_id) || `Host ID: ${service.host_id}`;
           return {
-            name: `${hostName} – ${item.name}`,
-            value: item.id,
+            name: `${hostName} – ${service.name}`,
+            value: service.id,
           };
         });
       },
