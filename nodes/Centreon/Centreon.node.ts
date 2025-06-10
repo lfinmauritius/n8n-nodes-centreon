@@ -125,70 +125,20 @@ export class Centreon implements INodeType {
       },
       /** Services for configuration (delete) */
       async getServicesConfiguration(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-        const creds = (await this.getCredentials('centreonApi')) as ICentreonCreds;
-        const version = this.getNodeParameter('version', 0) as string;
-        const baseUrl = creds.baseUrl.replace(/\/+$/, '');
-        const ignoreSsl = creds.ignoreSsl as boolean;
-
-        const authResp = (await this.helpers.request({
-          method: 'POST',
-          uri: `${baseUrl}/api/${version}/login`,
-          headers: { 'Content-Type': 'application/json' },
-          body: {
-            security: {
-              credentials: {
-                login: creds.username,
-                password: creds.password,
-              },
-            },
-          },
-          json: true,
-          rejectUnauthorized: !ignoreSsl,
-        })) as { security?: { token?: string } };
-
-        const token = authResp.security?.token;
-        if (!token) {
-          throw new NodeOperationError(this.getNode(), 'Cannot authenticate to Centreon');
-        }
-
-        // 1. D'abord récupérer les services
-        const servicesResp = (await this.helpers.request({
-          method: 'GET',
-          uri: `${baseUrl}/api/${version}/configuration/services`,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-AUTH-TOKEN': token,
-          },
-          qs: { limit: 500 },
-          json: true,
-          rejectUnauthorized: !ignoreSsl,
-        })) as {
-          result: Array<{ id: number; name: string; host_id: number }>;
-        };
-
-        // 2. Récupérer tous les hosts pour mapper les IDs aux noms
-        const hostsResp = (await this.helpers.request({
-          method: 'GET',
-          uri: `${baseUrl}/api/${version}/configuration/hosts`,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-AUTH-TOKEN': token,
-          },
-          qs: { limit: 500 },
-          json: true,
-          rejectUnauthorized: !ignoreSsl,
-        })) as {
-          result: Array<{ id: number; name: string }>;
-        };
-
-        // 3. Créer une map des hosts pour un accès rapide
+        // Récupérer d'abord tous les services
+        const services = await fetchFromCentreonRaw.call(this, '/configuration/services');
+        
+        // Récupérer tous les hosts
+        const hosts = await fetchFromCentreonRaw.call(this, '/configuration/hosts');
+        
+        // Créer une map des hosts
         const hostsMap = new Map<number, string>();
-        hostsResp.result.forEach(host => {
+        hosts.forEach((host: any) => {
           hostsMap.set(host.id, host.name);
         });
 
-        // 4. Mapper les services avec les noms des hosts
-        return servicesResp.result.map((service) => {
+        // Mapper les services avec les noms des hosts
+        return services.map((service: any) => {
           const hostName = hostsMap.get(service.host_id) || `Host ID: ${service.host_id}`;
           return {
             name: `${hostName} – ${service.name}`,
@@ -1455,11 +1405,23 @@ async function executeMonitoringServerApplyConfiguration(
   return { results };
 }
 
-/** Helper: auth + generic request */
+/** Helper: auth + generic request with pagination */
 async function fetchFromCentreon(
   this: ILoadOptionsFunctions,
   endpoint: string,
 ): Promise<INodePropertyOptions[]> {
+  const items = await fetchFromCentreonRaw.call(this, endpoint);
+  return items.map((item: { id: number; name: string }) => ({
+    name: item.name,
+    value: item.id,
+  }));
+}
+
+/** Helper: auth + generic request with pagination - returns raw data */
+async function fetchFromCentreonRaw(
+  this: ILoadOptionsFunctions,
+  endpoint: string,
+): Promise<any[]> {
   const creds = (await this.getCredentials('centreonApi')) as ICentreonCreds;
   const version = this.getNodeParameter('version', 0) as string;
   const baseUrl = creds.baseUrl.replace(/\/+$/, '');
@@ -1488,7 +1450,7 @@ async function fetchFromCentreon(
 
   const limit = 100;
   let page = 1;
-  const allItems: Array<{ id: number; name: string }> = [];
+  const allItems: any[] = [];
 
   while (true) {
     const resp = (await this.helpers.request({
@@ -1502,7 +1464,7 @@ async function fetchFromCentreon(
       json: true,
       rejectUnauthorized: !ignoreSsl,
     })) as {
-      result: Array<{ id: number; name: string }>;
+      result: Array<any>;
       meta?: { pagination: { total: number; page: number; limit: number } };
     };
 
@@ -1515,10 +1477,7 @@ async function fetchFromCentreon(
     page++;
   }
 
-  return allItems.map((item: { id: number; name: string }) => ({
-    name: item.name,
-    value: item.id,
-  }));
+  return allItems;
 }
 
 async function getAuthToken(
