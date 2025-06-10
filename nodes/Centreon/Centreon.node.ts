@@ -125,39 +125,26 @@ export class Centreon implements INodeType {
       },
       /** Services for configuration (delete) */
       async getServicesConfiguration(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-        // Récupérer d'abord tous les services
+        // Récupérer tous les services
         const services = await fetchFromCentreonRaw.call(this, '/configuration/services');
-        console.log('Services fetched:', services.length);
-        console.log('Sample service:', JSON.stringify(services[0], null, 2));
         
-        // Récupérer tous les hosts
-        const hosts = await fetchFromCentreonRaw.call(this, '/configuration/hosts');
-        console.log('Hosts fetched:', hosts.length);
-        console.log('Sample host:', JSON.stringify(hosts[0], null, 2));
-        
-        // Créer une map des hosts
-        const hostsMap = new Map<number, string>();
-        hosts.forEach((host: any) => {
-          console.log(`Adding to map: ${host.id} -> ${host.name}`);
-          hostsMap.set(host.id, host.name);
-        });
-        console.log('Hosts map size:', hostsMap.size);
-
         // Mapper les services avec les noms des hosts
         return services.map((service: any) => {
-          console.log(`Processing service: ${service.name}, host_id: ${service.host_id}, type: ${typeof service.host_id}`);
-          const hostName = hostsMap.get(service.host_id);
-          console.log(`Found host name: ${hostName} for host_id: ${service.host_id}`);
-          
-          if (!hostName) {
-            console.log(`Host not found in map for ID: ${service.host_id}`);
-            console.log('Available host IDs in map:', Array.from(hostsMap.keys()));
+          // Un service peut avoir plusieurs hosts
+          if (service.hosts && service.hosts.length > 0) {
+            // Prendre le premier host (ou concaténer si plusieurs)
+            const hostNames = service.hosts.map((h: any) => h.name).join(', ');
+            return {
+              name: `${hostNames} – ${service.name}`,
+              value: service.id,
+            };
+          } else {
+            // Service sans host (peut-être un template)
+            return {
+              name: `No host – ${service.name}`,
+              value: service.id,
+            };
           }
-          
-          return {
-            name: `${hostName || `Host ID: ${service.host_id}`} – ${service.name}`,
-            value: service.id,
-          };
         });
       },
       /** Services for monitoring operations */
