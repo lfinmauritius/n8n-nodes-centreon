@@ -189,6 +189,7 @@ export class Centreon implements INodeType {
         options: [
           { name: 'List', value: 'list', action: 'List hosts' },
           { name: 'Add', value: 'add', action: 'Add a host' },
+          { name: 'Delete', value: 'delete', action: 'Delete a host' },
           { name: 'Acknowledge', value: 'ack', action: 'Acknowledge a host' },
           { name: 'Downtime', value: 'downtime', action: 'Schedule downtime for a host' },
         ],
@@ -207,6 +208,7 @@ export class Centreon implements INodeType {
         options: [
           { name: 'List', value: 'list', action: 'List services' },
           { name: 'Add', value: 'add', action: 'Add a service' },
+          { name: 'Delete', value: 'delete', action: 'Delete a service' },
           { name: 'Acknowledge', value: 'ack', action: 'Acknowledge a service' },
           { name: 'Downtime', value: 'downtime', action: 'Schedule downtime for a service' },
         ],
@@ -353,6 +355,19 @@ export class Centreon implements INodeType {
         default: [],
         displayOptions: { show: { resource: ['host'], operation: ['add'] } },
         description: 'Choose from the list, or specify IDs using an expression. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+      },
+      // ---- HOST: DELETE ----
+      {
+        displayName: 'Host Name or ID',
+        name: 'hostId',
+        type: 'options',
+        typeOptions: { loadOptionsMethod: 'getHosts' },
+        default: '',
+        required: true,
+        displayOptions: {
+          show: { resource: ['host'], operation: ['delete'] },
+        },
+        description: 'The host to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
       },
       // ---- HOST: ACK ----
       {
@@ -603,6 +618,19 @@ export class Centreon implements INodeType {
           },
         ],
       },
+      // ---- SERVICE: DELETE ----
+      {
+        displayName: 'Service Name or ID',
+        name: 'service',
+        type: 'options',
+        typeOptions: { loadOptionsMethod: 'getServices' },
+        default: '',
+        required: true,
+        displayOptions: {
+          show: { resource: ['service'], operation: ['delete'] },
+        },
+        description: 'Service to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+      },
       // ---- SERVICE: DOWNTIME ----
       {
         displayName: 'Service Name or ID',
@@ -817,6 +845,8 @@ async function executeHostOperation(
       return executeHostList.call(this, itemIndex, creds, token, version, ignoreSsl);
     case 'add':
       return executeHostAdd.call(this, itemIndex, creds, token, version, ignoreSsl);
+    case 'delete':
+      return executeHostDelete.call(this, itemIndex, creds, token, version, ignoreSsl);
     case 'ack':
       return executeHostAck.call(this, itemIndex, creds, token, version, ignoreSsl);
     case 'downtime':
@@ -840,6 +870,8 @@ async function executeServiceOperation(
       return executeServiceList.call(this, itemIndex, creds, token, version, ignoreSsl);
     case 'add':
       return executeServiceAdd.call(this, itemIndex, creds, token, version, ignoreSsl);
+    case 'delete':
+      return executeServiceDelete.call(this, itemIndex, creds, token, version, ignoreSsl);
     case 'ack':
       return executeServiceAck.call(this, itemIndex, creds, token, version, ignoreSsl);
     case 'downtime':
@@ -935,6 +967,29 @@ async function executeHostAdd(
         groups: hostgroups,
         macros,
       },
+    },
+    ignoreSsl,
+    version,
+  );
+}
+
+async function executeHostDelete(
+  this: IExecuteFunctions,
+  itemIndex: number,
+  creds: ICentreonCreds,
+  token: string,
+  version: string,
+  ignoreSsl: boolean,
+): Promise<any> {
+  const hostId = this.getNodeParameter('hostId', itemIndex) as number;
+
+  return centreonRequest.call(
+    this,
+    creds,
+    token,
+    {
+      method: 'DELETE',
+      endpoint: `/configuration/hosts/${hostId}`,
     },
     ignoreSsl,
     version,
@@ -1094,6 +1149,30 @@ async function executeServiceAdd(
       method: 'POST',
       endpoint: '/configuration/services',
       body,
+    },
+    ignoreSsl,
+    version,
+  );
+}
+
+async function executeServiceDelete(
+  this: IExecuteFunctions,
+  itemIndex: number,
+  creds: ICentreonCreds,
+  token: string,
+  version: string,
+  ignoreSsl: boolean,
+): Promise<any> {
+  const serviceJson = this.getNodeParameter('service', itemIndex) as string;
+  const { serviceId } = JSON.parse(serviceJson) as ServiceIdentifier;
+
+  return centreonRequest.call(
+    this,
+    creds,
+    token,
+    {
+      method: 'DELETE',
+      endpoint: `/configuration/services/${serviceId}`,
     },
     ignoreSsl,
     version,
