@@ -187,10 +187,10 @@ export class Centreon implements INodeType {
         type: 'options',
         noDataExpression: true,
         options: [
-          { name: 'List', value: 'list' },
-          { name: 'Add', value: 'add' },
-          { name: 'Acknowledge', value: 'ack' },
-          { name: 'Downtime', value: 'downtime' },
+          { name: 'List', value: 'list' , action: 'List a host',},
+          { name: 'Add', value: 'add' , action: 'Add a host',},
+          { name: 'Acknowledge', value: 'ack' , action: 'Acknowledge a host',},
+          { name: 'Downtime', value: 'downtime' , action: 'Downtime a host',},
         ],
         default: 'list',
         displayOptions: {
@@ -205,8 +205,8 @@ export class Centreon implements INodeType {
         type: 'options',
         noDataExpression: true,
         options: [
-          { name: 'List', value: 'list' },
-          { name: 'Apply Configuration', value: 'applyConfiguration' },
+          { name: 'List', value: 'list' , action: 'List a monitoring server',},
+          { name: 'Apply Configuration', value: 'applyConfiguration' , action: 'Apply configuration a monitoring server',},
         ],
         default: 'list',
         displayOptions: {
