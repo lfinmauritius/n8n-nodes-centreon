@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-centreon",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Centreon node for n8n",
   "keywords": [
     "n8n-community-node-package"
@@ -52,6 +52,5 @@
   "peerDependencies": {
     "n8n-workflow": "*"
   },
-  "dependencies": {
-  }
+  "dependencies": {}
 }
