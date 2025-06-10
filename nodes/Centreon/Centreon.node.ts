@@ -813,8 +813,16 @@ export class Centreon implements INodeType {
           responseData = await executeMonitoringServerOperation.call(this, operation, i, creds, token, version, ignoreSsl);
         }
 
-        if (responseData !== undefined) {
+        if (responseData !== undefined && responseData !== null) {
           returnData.push(responseData as IDataObject);
+        } else {
+          // Si pas de données retournées, ajouter un objet de succès
+          returnData.push({ 
+            success: true, 
+            operation: operation,
+            resource: resource,
+            message: 'Operation completed successfully'
+          });
         }
       } catch (error) {
         if (this.continueOnFail()) {
@@ -983,7 +991,7 @@ async function executeHostDelete(
 ): Promise<any> {
   const hostId = this.getNodeParameter('hostId', itemIndex) as number;
 
-  return centreonRequest.call(
+  const response = await centreonRequest.call(
     this,
     creds,
     token,
@@ -994,6 +1002,9 @@ async function executeHostDelete(
     ignoreSsl,
     version,
   );
+
+  // Si pas de réponse, retourner un message de succès
+  return response || { success: true, message: `Host ${hostId} deleted successfully` };
 }
 
 async function executeHostAck(
@@ -1166,7 +1177,7 @@ async function executeServiceDelete(
   const serviceJson = this.getNodeParameter('service', itemIndex) as string;
   const { serviceId } = JSON.parse(serviceJson) as ServiceIdentifier;
 
-  return centreonRequest.call(
+  const response = await centreonRequest.call(
     this,
     creds,
     token,
@@ -1177,6 +1188,9 @@ async function executeServiceDelete(
     ignoreSsl,
     version,
   );
+
+  // Si pas de réponse, retourner un message de succès
+  return response || { success: true, message: `Service ${serviceId} deleted successfully` };
 }
 
 async function executeServiceAck(
@@ -1308,7 +1322,6 @@ async function executeMonitoringServerApplyConfiguration(
         {
           method: 'GET',
           endpoint: `/configuration/monitoring-servers/${monitoringServerId}/generate-and-reload`,
-          body: {},
         },
         ignoreSsl,
         version,
@@ -1444,5 +1457,21 @@ async function centreonRequest(
     requestOptions.qs = options.params;
   }
 
-  return this.helpers.request(requestOptions);
+  try {
+    const response = await this.helpers.request(requestOptions);
+    // Si la réponse est vide ou undefined, retourner un objet avec un message
+    if (response === undefined || response === null || response === '') {
+      return { success: true, message: 'Operation completed successfully' };
+    }
+    return response;
+  } catch (error) {
+    // Si c'est une erreur avec un body de réponse, essayer de le parser
+    if (error.response && error.response.body) {
+      throw new NodeApiError(this.getNode(), error, {
+        message: `Request failed: ${error.message}`,
+        description: JSON.stringify(error.response.body),
+      });
+    }
+    throw error;
+  }
 }
