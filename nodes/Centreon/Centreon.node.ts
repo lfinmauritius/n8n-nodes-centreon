@@ -1209,7 +1209,7 @@ async function executeMonitoringServerApplyConfiguration(
         creds,
         token,
         {
-          method: 'POST',
+          method: 'GET',
           endpoint: `/configuration/monitoring-servers/${monitoringServerId}/generate-and-reload`,
           body: {},
         },
