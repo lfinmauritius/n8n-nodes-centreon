@@ -53,6 +53,5 @@
     "n8n-workflow": "*"
   },
   "dependencies": {
-    "n8n-nodes-centreon": "^0.1.10"
   }
 }
