@@ -8,11 +8,11 @@ The **n8n-nodes-centreon** package integrates Centreon into your n8n workflows t
 
 ## Features
 
-- Authenticate with the Centreon API (login/token)
+- Authenticate with the Centreon API
 - Create downtimes (maintenance windows) for hosts and services
 - Create or delete hosts or services
 - List existing hosts or services
-- Acknowldge hosts or services
+- Acknowledge hosts or services
 - List or apply configuration on pollers
 - Full support for API parameters (duration, type, comments, etc.)
 
